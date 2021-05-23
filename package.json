@@ -1,0 +1,50 @@
+{
+  "name": "applet-monitor",
+  "version": "1.0.0",
+  "description": "WeChat Applet Monitoring for Apache SkyWalking",
+  "main": "index.js",
+  "license": "Apache 2.0",
+  "repository": {
+    "url": "https://github.com/SkyAPM/applet-monitor.git"
+  },
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rimraf lib && rollup -c",
+    "lint": "eslint --ext .ts,.js --fix ./src",
+    "prepare": "husky install"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@commitlint/cli": "^12.1.4",
+    "@commitlint/config-conventional": "^12.1.4",
+    "@rollup/plugin-commonjs": "^19.0.0",
+    "@rollup/plugin-node-resolve": "^13.0.0",
+    "@typescript-eslint/eslint-plugin": "^4.24.0",
+    "@typescript-eslint/parser": "^4.24.0",
+    "eslint": "^7.26.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "husky": "^6.0.0",
+    "lint-staged": "^10.5.4",
+    "prettier": "^2.3.0",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.48.0",
+    "rollup-plugin-typescript2": "^0.30.0",
+    "typescript": "^4.2.4"
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "npm run lint"
+    ]
+  },
+  "keywords": [
+    "SkyAPM",
+    "APM",
+    "Monitor",
+    "Wechat Mini Program"
+  ],
+  "bugs": {
+    "url": "https://github.com/SkyAPM/applet-monitor/issues"
+  },
+  "homepage": "https://github.com/SkyAPM/applet-monitor#readme"
+}
