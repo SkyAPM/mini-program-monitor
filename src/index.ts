@@ -1,5 +1,10 @@
-const a = 1;
-function test(x) {
-  return x;
+import { store } from '@/store';
+import { rewriteFunc } from '@/rewriteFunc';
+import { CustomOptions } from './store/types';
+
+function createMonitor(options: CustomOptions): void {
+  store.setOptions(options);
+  rewriteFunc();
 }
-test(a);
+
+export { createMonitor };

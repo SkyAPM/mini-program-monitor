@@ -1,11 +1,13 @@
 {
-  "name": "applet-monitor",
-  "version": "1.0.0",
-  "description": "WeChat Applet Monitoring for Apache SkyWalking",
-  "main": "index.js",
+  "name": "mini-program-monitor",
+  "version": "0.1.0",
+  "description": "WeChat Mini Program Monitoring for Apache SkyWalking",
+  "main": "lib/index.js",
+  "miniprogram": "lib",
+  "types": "lib/types.d.ts",
   "license": "Apache 2.0",
   "repository": {
-    "url": "https://github.com/SkyAPM/applet-monitor.git"
+    "url": "https://github.com/SkyAPM/mini-program-monitor"
   },
   "scripts": {
     "dev": "rollup -c -w",
@@ -19,6 +21,7 @@
     "@commitlint/config-conventional": "^12.1.4",
     "@rollup/plugin-commonjs": "^19.0.0",
     "@rollup/plugin-node-resolve": "^13.0.0",
+    "@types/wechat-miniprogram": "^3.3.0",
     "@typescript-eslint/eslint-plugin": "^4.24.0",
     "@typescript-eslint/parser": "^4.24.0",
     "eslint": "^7.26.0",
@@ -29,6 +32,7 @@
     "prettier": "^2.3.0",
     "rimraf": "^3.0.2",
     "rollup": "^2.48.0",
+    "rollup-plugin-dts": "^3.0.2",
     "rollup-plugin-typescript2": "^0.30.0",
     "typescript": "^4.2.4"
   },
@@ -44,7 +48,7 @@
     "Wechat Mini Program"
   ],
   "bugs": {
-    "url": "https://github.com/SkyAPM/applet-monitor/issues"
+    "url": "https://github.com/SkyAPM/mini-program-monitor/issues"
   },
-  "homepage": "https://github.com/SkyAPM/applet-monitor#readme"
+  "homepage": "https://github.com/SkyAPM/mini-program-monitor#readme"
 }
