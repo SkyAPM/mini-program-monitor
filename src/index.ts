@@ -1,5 +1,5 @@
 import { store } from '@/store';
-import { rewriteFunc } from '@/rewriteFunc';
+import { rewriteFunc } from '@/rewrite';
 import { CustomOptions } from './store/types';
 
 function createMonitor(options: CustomOptions): void {

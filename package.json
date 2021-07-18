@@ -15,7 +15,9 @@
     "lint": "eslint --ext .ts,.js --fix ./src",
     "prepare": "husky install"
   },
-  "dependencies": {},
+  "dependencies": {
+    "js-base64": "^3.6.1"
+  },
   "devDependencies": {
     "@commitlint/cli": "^12.1.4",
     "@commitlint/config-conventional": "^12.1.4",

@@ -1,4 +1,4 @@
-import { CustomOptions, ErrorInfoFields, ReportFields } from '@/store/types';
+import { CustomOptions, ErrorInfoFields, ReportFields } from './types';
 import { report } from '@/report';
 import { ReportUrl } from '@/constant';
 
@@ -21,7 +21,7 @@ class Store {
   public setOptions(options: CustomOptions) {
     this.options = Object.assign(this.options, options);
   }
-  public addTask(data) {
+  public addLogTask(data) {
     this.queues.push(data);
     this.fireTasks();
   }
@@ -32,7 +32,10 @@ class Store {
       this.timer = null;
       report(ReportUrl.ERRORS, this.queues, this.options.collector);
       this.queues = [];
-    }, 30 * 1000);
+    }, 4 * 1000);
+  }
+  reportAll() {
+    // console.log('reportAll---');
   }
 }
 
