@@ -23,6 +23,12 @@ export enum ErrorsCategory {
   UNKNOWN_ERROR = 'unknown',
 }
 
+export const ExcludeErrorTypes: string[] = [
+  ErrorsCategory.AJAX_ERROR,
+  ErrorsCategory.RESOURCE_ERROR,
+  ErrorsCategory.UNKNOWN_ERROR,
+];
+
 export enum GradeTypeEnum {
   INFO = 'Info',
   WARNING = 'Warning',
@@ -33,5 +39,6 @@ export const SpanLayer = 'Http';
 export const SpanType = 'Exit';
 
 export const ComponentId = 10001; // ajax
-export const ServiceTag = '<wx-mini>';
+// export const ServiceTag = '<wx-mini>';
+export const ServiceTag = '<browser>';
 export const swv = 'sw8';

@@ -7,7 +7,6 @@ import { SegmentFields } from './types';
 const { options } = store;
 
 export function rewriteNetwork(): void {
-  //todo
   const networkMethods = ['request', 'downloadFile', 'uploadFile'];
   networkMethods.forEach((method) => {
     const originRequest = wx[method];
@@ -21,11 +20,11 @@ export function rewriteNetwork(): void {
           | WechatMiniprogram.DownloadFileOption
           | WechatMiniprogram.UploadFileOption,
       ) {
-        const { url, header = {}, fail: _fail, success: _success } = reqOptions;
+        const { url, header = {}, fail: customFail, success: customSuccess } = reqOptions;
         // if (noTraceOrigins(url) || noTraceSDKInternal()) {
         //   return originRequest.call(this, reqOptions);
         // }
-        // const startTime = now();
+        const startTime = now();
         const traceId = uuid();
         const traceSegmentId = uuid();
         const { host } = parseUrl(url);
@@ -37,11 +36,11 @@ export function rewriteNetwork(): void {
           service: options.service,
           serviceVersion: options.serviceVersion,
           pagePath: options.pagePath,
+          collector: options.collector,
           category: ErrorsCategory.AJAX_ERROR,
           grade: GradeTypeEnum.ERROR,
           errorUrl: url,
           message: '',
-          collector: options.collector,
           stack: '',
         };
 
@@ -55,15 +54,15 @@ export function rewriteNetwork(): void {
           if (statusCode === 0 || statusCode >= 400) {
             logInfo.message = `status: ${statusCode}; statusText: ${errMsg};`;
             logInfo.stack = `request: ${data};`;
+            store.addLogTask(logInfo);
           }
-          store.addLogTask(logInfo);
-          return _success && _success.call(this, res);
+          return customSuccess && customSuccess.call(this, res);
         };
 
-        reqOptions.fail = function (res) {
+        reqOptions.fail = function (res: WechatMiniprogram.GeneralCallbackResult) {
           logInfo.message = `statusText: ${res.errMsg};`;
           store.addLogTask(logInfo);
-          return _fail && _fail.call(this, res);
+          return customFail && customFail.call(this, res);
         };
 
         return originRequest.call(this, reqOptions);
@@ -94,12 +93,12 @@ function generateSWHeader({ traceId, traceSegmentId, host }) {
     serviceInstance: options.serviceVersion,
     traceSegmentId: '',
   } as SegmentFields;
-  const traceIdStr = String(encode(traceId));
-  const segmentId = String(encode(traceSegmentId));
-  const service = String(encode(segment.service));
-  const instance = String(encode(segment.serviceInstance));
-  const endpoint = String(encode(options.pagePath));
-  const peer = String(encode(host));
+  const traceIdStr = `${encode(traceId)}`;
+  const segmentId = `${encode(traceSegmentId)}`;
+  const service = `${encode(segment.service)}`;
+  const instance = `${encode(segment.serviceInstance)}`;
+  const endpoint = `${encode(options.pagePath)}`;
+  const peer = `${encode(host)}`;
   const index = segment.spans.length;
   return `${1}-${traceIdStr}-${segmentId}-${index}-${service}-${instance}-${endpoint}-${peer}`;
 }

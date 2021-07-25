@@ -1,8 +1,9 @@
 import { CustomOptions, ErrorInfoFields, ReportFields } from './types';
 import { report } from '@/report';
-import { ReportUrl } from '@/constant';
+import { ReportUrl, ExcludeErrorTypes } from '@/constant';
 
 class Store {
+  private jsErrorPv = false;
   private timer: any = null;
   public options: CustomOptions = {
     collector: '', // report serve
@@ -21,17 +22,27 @@ class Store {
   public setOptions(options: CustomOptions) {
     this.options = Object.assign(this.options, options);
   }
-  public addLogTask(data) {
-    this.queues.push(data);
+  public addLogTask(logInfo: ErrorInfoFields & ReportFields) {
+    const newLogInfo = this.handleLogInfo(logInfo);
+    this.queues.push(newLogInfo);
     this.fireTasks();
+  }
+  private handleLogInfo(logInfo: ErrorInfoFields & ReportFields) {
+    if (!this.jsErrorPv && !ExcludeErrorTypes.includes(logInfo.category)) {
+      this.jsErrorPv = true;
+      return {
+        ...logInfo,
+        firstReportedError: true,
+      };
+    }
+    return logInfo;
   }
   public fireTasks() {
     if (!(this.queues && this.queues.length)) return;
     if (this.timer) return;
     this.timer = setTimeout(() => {
       this.timer = null;
-      report(ReportUrl.ERRORS, this.queues, this.options.collector);
-      this.queues = [];
+      report(ReportUrl.ERRORS, this.queues, this.options.collector, () => (this.queues = []));
     }, 4 * 1000);
   }
   reportAll() {

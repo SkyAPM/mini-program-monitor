@@ -1,10 +1,23 @@
 import { store } from '@/store';
+import { uuid } from '@/utils';
+import { ErrorsCategory, GradeTypeEnum } from '@/constant';
 
+const { options } = store;
 const methods = {
-  onError(data) {
+  onError(msg) {
     const logInfo = {
-      category: 'error',
-      data,
+      uniqueId: uuid(),
+      service: options.service,
+      serviceVersion: options.serviceVersion,
+      pagePath: options.pagePath,
+      category: ErrorsCategory.JS_ERROR,
+      grade: GradeTypeEnum.ERROR,
+      errorUrl: '',
+      // line: 1,
+      // col: 1,
+      message: msg,
+      collector: options.collector,
+      // stack: error.stack,
     };
     store.addLogTask(logInfo);
   },
@@ -25,24 +38,6 @@ function rewriteApp(): void {
         return customMethod && customMethod.call(this, data);
       };
     }
-
-    // ['onLaunch', 'onError', 'onHide'].forEach((methodName) => {
-    //   const customMethod = appOptions[methodName];
-    //
-    //   appOptions[methodName] = function (data) {
-    //     switch (methodName) {
-    //       case 'onLaunch':
-    //         break;
-    //       case 'onError': {
-    //         break;
-    //       }
-    //       case 'onHide':
-    //         break;
-    //     }
-    //
-    //     return customMethod && customMethod.call(this, data);
-    //   };
-    // });
     return originApp(appOptions);
   } as WechatMiniprogram.App.Constructor;
 }
