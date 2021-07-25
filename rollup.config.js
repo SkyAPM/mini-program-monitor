@@ -1,18 +1,29 @@
 import typescript from 'rollup-plugin-typescript2';
-import resolve from '@rollup/plugin-node-resolve';
+import { nodeResolve } from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
-export default {
-  input: 'src/index.ts',
-  output: {
-    file: './lib/index.js',
-    format: 'cjs', // "amd", "cjs", "system", "es", "iife" or "umd"
-    sourcemap: true,
+import dts from 'rollup-plugin-dts';
+
+const config = [
+  {
+    input: 'src/index.ts',
+    output: {
+      file: './lib/index.js',
+      format: 'cjs',
+      sourcemap: true,
+    },
+    plugins: [
+      typescript(),
+      nodeResolve({
+        extensions: ['.js', '.ts'],
+      }),
+      commonjs(),
+    ],
   },
-  plugins: [
-    typescript({
-      useTsconfigDeclarationDir: true,
-    }),
-    resolve(),
-    commonjs(),
-  ],
-};
+  {
+    input: 'src/index.ts',
+    output: [{ file: './lib/types.d.ts', format: 'es' }],
+    plugins: [dts()],
+  },
+];
+
+export default config;

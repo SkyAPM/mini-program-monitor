@@ -6,12 +6,11 @@
     "noImplicitAny": false,
     "removeComments": true,
     "paths": {
-      "@": ["./src"]
+      "@/*": ["src/*"]
     },
-    "target": "ESNext",
+    "target": "es5",
     "outDir": "./lib",
-    "declaration": true,
-    "declarationDir": "./lib/types",
+    "moduleResolution": "node",
     "allowJs": true
   },
   "include": ["src/**/*"],
