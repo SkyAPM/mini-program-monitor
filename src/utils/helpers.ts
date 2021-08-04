@@ -1,9 +1,10 @@
 interface UrlFields {
-  scheme: string | unknown;
-  slash: string | unknown;
-  host: string | unknown;
-  port: string | unknown;
-  path: string | unknown;
+  scheme: string;
+  slash: string;
+  host: string;
+  port: string;
+  path: string;
+  origin: string;
 }
 
 export function uuid(): string {
@@ -14,10 +15,12 @@ export function uuid(): string {
   });
 }
 
+// https://harttle.land/2016/02/23/javascript-regular-expressions.html
 export function parseUrl(url: string): UrlFields {
   const reg = /^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/;
   const [, scheme, slash, host, port, path] = reg.exec(url);
-  return { scheme, slash, host, port, path };
+  const origin = `${scheme}:${slash}${host}`;
+  return { scheme, slash, host, port, path, origin };
 }
 
 export function now(): number {

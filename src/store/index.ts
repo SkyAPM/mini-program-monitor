@@ -1,3 +1,4 @@
+import { SegmentFields } from '@/types/trace';
 import { CustomOptions, ErrorInfoFields, ReportFields } from './types';
 import { report } from '@/report';
 import { ReportUrl, ExcludeErrorTypes } from '@/constant';
@@ -17,7 +18,9 @@ class Store {
     pagePath: '',
     serviceVersion: '',
   };
+  private segments: SegmentFields[] = [];
   private queues: ((ErrorInfoFields & ReportFields) | undefined)[] = [];
+  private staged: ((ErrorInfoFields & ReportFields) | undefined)[] = [];
 
   public setOptions(options: CustomOptions) {
     this.options = Object.assign(this.options, options);
@@ -26,6 +29,9 @@ class Store {
     const newLogInfo = this.handleLogInfo(logInfo);
     this.queues.push(newLogInfo);
     this.fireTasks();
+  }
+  public addSegment(segment: SegmentFields) {
+    this.segments.push(segment);
   }
   private handleLogInfo(logInfo: ErrorInfoFields & ReportFields) {
     if (!this.jsErrorPv && !ExcludeErrorTypes.includes(logInfo.category)) {
@@ -42,7 +48,9 @@ class Store {
     if (this.timer) return;
     this.timer = setTimeout(() => {
       this.timer = null;
-      report(ReportUrl.ERRORS, this.queues, this.options.collector, () => (this.queues = []));
+      this.staged.push(...this.queues);
+      this.queues = [];
+      report(ReportUrl.ERRORS, this.staged, this.options.collector, () => (this.staged = []));
     }, 4 * 1000);
   }
   reportAll() {
