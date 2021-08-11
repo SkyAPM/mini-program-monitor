@@ -7,14 +7,6 @@ interface UrlFields {
   origin: string;
 }
 
-export function uuid(): string {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
-}
-
 // https://harttle.land/2016/02/23/javascript-regular-expressions.html
 export function parseUrl(url: string): UrlFields {
   const reg = /^(?:([A-Za-z]+):)?(\/{0,3})([0-9.\-A-Za-z]+)(?::(\d+))?(?:\/([^?#]*))?(?:\?([^#]*))?(?:#(.*))?$/;
@@ -23,6 +15,7 @@ export function parseUrl(url: string): UrlFields {
   return { scheme, slash, host, port, path, origin };
 }
 
-export function now(): number {
-  return Date.now();
+function getCurrentRoute() {
+  const currPages = getCurrentPages();
+  return currPages.length ? currPages[currPages.length - 1]['route'] : '';
 }

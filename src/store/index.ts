@@ -22,7 +22,7 @@ class Store {
   private queues: ((ErrorInfoFields & ReportFields) | undefined)[] = [];
   private staged: ((ErrorInfoFields & ReportFields) | undefined)[] = [];
 
-  public setOptions(options: CustomOptions) {
+  public setOptions(options: any) {
     this.options = Object.assign(this.options, options);
   }
   public addLogTask(logInfo: ErrorInfoFields & ReportFields) {

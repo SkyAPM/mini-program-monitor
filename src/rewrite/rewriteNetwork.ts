@@ -80,7 +80,7 @@ export function rewriteNetwork(): void {
           uniqueId: uuid(),
           service: options.service,
           serviceVersion: options.serviceVersion,
-          pagePath: options.pagePath,
+          pagePath,
           category: ErrorsCategory.AJAX_ERROR,
           grade: GradeTypeEnum.ERROR,
           errorUrl: url,
@@ -123,7 +123,7 @@ export function rewriteNetwork(): void {
           const { method } = reqOptions;
           if (hasTraceFlag) {
             const exitSpan: SpanFields = {
-              operationName: options.pagePath,
+              operationName: pagePath,
               startTime: startTime,
               endTime: now(),
               spanId: segment.spans.length,
