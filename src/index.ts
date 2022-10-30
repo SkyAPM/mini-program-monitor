@@ -1,10 +1,12 @@
-import { store } from '@/store';
-import { rewriteFunc } from '@/rewrite';
-import { CustomOptions } from './store/types';
+import { options } from '@/shared/options';
+import { rewriteApp, rewritePage, rewriteNetwork } from '@/rewrite';
+import { CustomOptionsType } from '@/types';
 
-function createMonitor(options: CustomOptions): void {
-  store.setOptions(options);
-  rewriteFunc();
+function createMonitor(opt: CustomOptionsType): void {
+  options.setOptions(opt);
+  rewriteApp();
+  rewritePage();
+  rewriteNetwork();
 }
 
 export { createMonitor };

@@ -1,11 +1,16 @@
-export interface CustomOptions extends CustomReportOptions {
+export interface CustomOptionsType extends CustomReportOptions {
   jsErrors?: boolean;
   apiErrors?: boolean;
   resourceErrors?: boolean;
   autoTracePerf?: boolean;
+  useFmp?: boolean;
+  enableSPA?: boolean;
+  vue?: any;
   traceSDKInternal?: boolean;
   detailMode?: boolean;
   noTraceOrigins?: (string | RegExp)[];
+  traceTimeInterval?: number;
+  customTags?: TagOption[];
 }
 
 export interface CustomReportOptions {
@@ -14,6 +19,11 @@ export interface CustomReportOptions {
   pagePath: string;
   serviceVersion: string;
 }
+
+export type TagOption = {
+  key: string;
+  value: string;
+};
 
 export interface ErrorInfoFields {
   uniqueId: string;

@@ -20,7 +20,7 @@ const config = [
     ],
   },
   {
-    input: 'src/index.ts',
+    input: 'src/types/index.d.ts',
     output: [{ file: './lib/types.d.ts', format: 'es' }],
     plugins: [dts()],
   },

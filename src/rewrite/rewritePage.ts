@@ -1,11 +1,9 @@
-import { store } from '@/store';
-
 const methods = {
   onLoad() {
-    store.setOptions({ pagePath: this.route });
+    //
   },
   onShow() {
-    store.setOptions({ pagePath: this.route });
+    //
   },
 };
 

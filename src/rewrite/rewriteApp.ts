@@ -1,8 +1,8 @@
-import { store } from '@/store';
-import { uuid } from '@/utils';
-import { ErrorsCategory, GradeTypeEnum } from '@/constant';
+import { options } from '@/shared/options';
+import { uuid } from '@/shared/utils';
+import { ErrorsCategory, GradeTypeEnum } from '@/shared/constants';
+import { errorTask } from '@/errorLog';
 
-const { options } = store;
 const methods = {
   onError(msg) {
     const logInfo = {
@@ -13,19 +13,19 @@ const methods = {
       category: ErrorsCategory.JS_ERROR,
       grade: GradeTypeEnum.ERROR,
       errorUrl: '',
-      // line: 1,
-      // col: 1,
+      line: 0,
+      col: 0,
       message: msg,
       collector: options.collector,
       // stack: error.stack,
     };
-    store.addLogTask(logInfo);
+    errorTask.addTask(logInfo);
   },
   onHide() {
-    store.reportAll();
+    //
   },
   onLaunch() {
-    // console.log(11, this.globalData);
+    //
   },
 };
 function rewriteApp(): void {

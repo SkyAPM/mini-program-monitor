@@ -9,12 +9,44 @@ import {
   SpanLayer,
   SpanType,
   ComponentId,
-} from '@/constant';
-import { uuid, parseUrl, now } from '@/utils';
-import { store } from '@/store';
-import { ErrorInfoFields, ReportFields } from '@/store/types';
+} from '@/shared/constants';
+import { uuid, parseUrl, now } from '@/shared/utils';
+import { options } from '@/shared/options';
+import { ErrorInfoFields, ReportFields } from '@/types/options';
+import { traceTask } from '@/trace';
+import { errorTask } from '@/errorLog';
 
 type Method = { method?: 'OPTIONS' | 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'TRACE' | 'CONNECT' };
+
+function notTraceOrigins(origin: string, noTraceOrigins = []): boolean {
+  return noTraceOrigins.some((rule: string | RegExp) => {
+    if (typeof rule === 'string') {
+      return origin === rule;
+    } else if (rule instanceof RegExp) {
+      return rule.test(origin);
+    }
+  });
+}
+
+function isSDKInternal(requestPath: string, collector: string): boolean {
+  const { path: collectorPath } = parseUrl(collector);
+  const pathname =
+    !collectorPath || collectorPath === '/' ? requestPath : requestPath.replace(new RegExp(`^${collectorPath}`), '');
+  const internals: string[] = [ReportUrl.ERROR, ReportUrl.ERRORS, ReportUrl.PERF, ReportUrl.SEGMENTS];
+  return internals.includes(pathname);
+}
+
+function generateSWHeader({ traceId, traceSegmentId, host, segment, pagePath }): string {
+  const traceIdStr = `${encode(traceId)}`;
+  const segmentId = `${encode(traceSegmentId)}`;
+  const service = `${encode(segment.service)}`;
+  const instance = `${encode(segment.serviceInstance)}`;
+  const endpoint = `${encode(pagePath)}`;
+  const peer = `${encode(host)}`;
+  const index = segment.spans.length;
+  return `${1}-${traceIdStr}-${segmentId}-${index}-${service}-${instance}-${endpoint}-${peer}`;
+}
+
 export function rewriteNetwork(): void {
   const networkMethods = ['request', 'downloadFile', 'uploadFile'];
   networkMethods.forEach((method) => {
@@ -31,49 +63,21 @@ export function rewriteNetwork(): void {
         ) &
           Method,
       ) {
-        function notTraceOrigins(origin: string, noTraceOrigins = []): boolean {
-          return noTraceOrigins.some((rule: string | RegExp) => {
-            if (typeof rule === 'string') {
-              return origin === rule;
-            } else if (rule instanceof RegExp) {
-              return rule.test(origin);
-            }
-          });
-        }
-        function isTraceUrl(reqUrl: string, collector: string): boolean {
-          const { path: collectorPath } = parseUrl(collector);
-          const traceUrls: string[] = [ReportUrl.ERROR, ReportUrl.ERRORS, ReportUrl.PERF, ReportUrl.SEGMENTS];
-          return traceUrls.includes(reqUrl.replace(new RegExp(`^${collectorPath}`), ''));
-        }
-        function generateSWHeader({ traceId, traceSegmentId, host, segment, pagePath }) {
-          const traceIdStr = `${encode(traceId)}`;
-          const segmentId = `${encode(traceSegmentId)}`;
-          const service = `${encode(segment.service)}`;
-          const instance = `${encode(segment.serviceInstance)}`;
-          const endpoint = `${encode(pagePath)}`;
-          const peer = `${encode(host)}`;
-          const index = segment.spans.length;
-          return `${1}-${traceIdStr}-${segmentId}-${index}-${service}-${instance}-${endpoint}-${peer}`;
-        }
-
-        const { options } = store;
-        const { collector, noTraceOrigins = [], pagePath } = options;
+        const { collector, noTraceOrigins = [], pagePath, traceSDKInternal } = options;
         const { url, header = {}, fail: customFail, success: customSuccess, complete: customComplete } = reqOptions;
-        const { host, origin } = parseUrl(url);
+        const { host, origin, path } = parseUrl(url);
 
         const startTime = now();
         const traceId = uuid();
         const traceSegmentId = uuid();
-        const hasTraceFlag = !(
-          notTraceOrigins(origin, noTraceOrigins) ||
-          (isTraceUrl(url, collector) && !options.traceSDKInternal)
-        );
+        const hasTrace =
+          !notTraceOrigins(origin, noTraceOrigins) || (traceSDKInternal && isSDKInternal(path, collector));
 
         const segment: SegmentFields = {
+          traceId: '',
           service: options.service + ServiceTag,
           spans: [],
           serviceInstance: options.serviceVersion,
-          traceId: '',
           traceSegmentId: '',
         };
         const logInfo: ErrorInfoFields & ReportFields & { collector: string } = {
@@ -88,7 +92,7 @@ export function rewriteNetwork(): void {
           collector: options.collector,
           stack: '',
         };
-        if (hasTraceFlag) {
+        if (hasTrace) {
           header[swv] = generateSWHeader({ traceId, traceSegmentId, host, segment, pagePath });
           reqOptions.header = header;
         }
@@ -103,14 +107,14 @@ export function rewriteNetwork(): void {
           if (statusCode === 0 || statusCode >= 400) {
             logInfo.message = `status: ${statusCode}; statusText: ${errMsg};`;
             logInfo.stack = `request: ${data};`;
-            store.addLogTask(logInfo);
+            errorTask.addTask(logInfo);
           }
           return customSuccess && customSuccess.call(this, res);
         };
 
         reqOptions.fail = function (res: WechatMiniprogram.GeneralCallbackResult) {
           logInfo.message = `statusText: ${res.errMsg};`;
-          store.addLogTask(logInfo);
+          errorTask.addTask(logInfo);
           return customFail && customFail.call(this, res);
         };
 
@@ -121,7 +125,17 @@ export function rewriteNetwork(): void {
             | WechatMiniprogram.UploadFileSuccessCallbackResult,
         ) {
           const { method } = reqOptions;
-          if (hasTraceFlag) {
+          if (hasTrace) {
+            const tags = [
+              {
+                key: 'http.method',
+                value: method || 'GET',
+              },
+              {
+                key: 'url',
+                value: url,
+              },
+            ];
             const exitSpan: SpanFields = {
               operationName: pagePath,
               startTime: startTime,
@@ -133,23 +147,12 @@ export function rewriteNetwork(): void {
               parentSpanId: segment.spans.length - 1,
               componentId: ComponentId,
               peer: host,
-              tags: options.detailMode
-                ? [
-                    {
-                      key: 'http.method',
-                      value: method || 'GET',
-                    },
-                    {
-                      key: 'url',
-                      value: url,
-                    },
-                  ]
-                : undefined,
+              tags: options.detailMode ? (options.customTags ? [...tags, ...options.customTags] : tags) : undefined,
             };
             segment.traceId = traceId;
             segment.traceSegmentId = traceSegmentId;
             segment.spans.push(exitSpan);
-            store.addSegment(segment);
+            traceTask.addTask(segment);
           }
           return customComplete && customComplete.call(this, res);
         };
