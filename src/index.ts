@@ -1,12 +1,10 @@
 import { options } from '@/shared/options';
-import { rewriteApp, rewritePage, rewriteNetwork } from '@/rewrite';
+import { intercept } from '@/interceptors';
 import { CustomOptionsType } from '@/types';
 
 function createMonitor(opt: CustomOptionsType): void {
   options.setOptions(opt);
-  rewriteApp();
-  rewritePage();
-  rewriteNetwork();
+  intercept();
 }
 
 export { createMonitor };

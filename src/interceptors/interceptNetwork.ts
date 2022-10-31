@@ -1,5 +1,5 @@
 import { encode } from 'js-base64';
-import { SegmentFields, SpanFields } from '@/types/trace';
+import { SegmentFields, SpanFields, ErrorInfoFields, ReportFields } from '@/types';
 import {
   ServiceTag,
   ErrorsCategory,
@@ -12,7 +12,6 @@ import {
 } from '@/shared/constants';
 import { uuid, parseUrl, now } from '@/shared/utils';
 import { options } from '@/shared/options';
-import { ErrorInfoFields, ReportFields } from '@/types/options';
 import { traceTask } from '@/trace';
 import { errorTask } from '@/errorLog';
 
@@ -47,16 +46,16 @@ function generateSWHeader({ traceId, traceSegmentId, host, segment, pagePath }):
   return `${1}-${traceIdStr}-${segmentId}-${index}-${service}-${instance}-${endpoint}-${peer}`;
 }
 
-export function rewriteNetwork(): void {
+export function interceptNetwork(): void {
   const networkMethods = ['request', 'downloadFile', 'uploadFile'];
-  networkMethods.forEach((method) => {
-    const originRequest = wx[method];
-    Object.defineProperty(wx, method, {
+  networkMethods.forEach((methodName) => {
+    const originRequest = wx[methodName];
+    Object.defineProperty(wx, methodName, {
       writable: true,
       enumerable: true,
       configurable: true,
       value: function (
-        reqOptions: (
+        requestOptions: (
           | WechatMiniprogram.RequestOption
           | WechatMiniprogram.DownloadFileOption
           | WechatMiniprogram.UploadFileOption
@@ -64,7 +63,7 @@ export function rewriteNetwork(): void {
           Method,
       ) {
         const { collector, noTraceOrigins = [], pagePath, traceSDKInternal } = options;
-        const { url, header = {}, fail: customFail, success: customSuccess, complete: customComplete } = reqOptions;
+        const { url, header = {}, fail: originFail, success: originSuccess, complete: originComplete } = requestOptions;
         const { host, origin, path } = parseUrl(url);
 
         const startTime = now();
@@ -94,10 +93,10 @@ export function rewriteNetwork(): void {
         };
         if (hasTrace) {
           header[swv] = generateSWHeader({ traceId, traceSegmentId, host, segment, pagePath });
-          reqOptions.header = header;
+          requestOptions.header = header;
         }
 
-        reqOptions.success = function (
+        requestOptions.success = function (
           res:
             | WechatMiniprogram.RequestSuccessCallbackResult
             | (WechatMiniprogram.DownloadFileSuccessCallbackResult & { data?: any })
@@ -109,23 +108,23 @@ export function rewriteNetwork(): void {
             logInfo.stack = `request: ${data};`;
             errorTask.addTask(logInfo);
           }
-          return customSuccess && customSuccess.call(this, res);
+          return originSuccess && originSuccess.call(this, res);
         };
 
-        reqOptions.fail = function (res: WechatMiniprogram.GeneralCallbackResult) {
+        requestOptions.fail = function (res: WechatMiniprogram.GeneralCallbackResult) {
           logInfo.message = `statusText: ${res.errMsg};`;
           errorTask.addTask(logInfo);
-          return customFail && customFail.call(this, res);
+          return originFail && originFail.call(this, res);
         };
 
-        reqOptions.complete = function (
+        requestOptions.complete = function (
           res:
             | WechatMiniprogram.RequestSuccessCallbackResult
             | (WechatMiniprogram.DownloadFileSuccessCallbackResult & { data?: any })
             | WechatMiniprogram.UploadFileSuccessCallbackResult,
         ) {
-          const { method } = reqOptions;
           if (hasTrace) {
+            const { method } = requestOptions;
             const tags = [
               {
                 key: 'http.method',
@@ -154,10 +153,10 @@ export function rewriteNetwork(): void {
             segment.spans.push(exitSpan);
             traceTask.addTask(segment);
           }
-          return customComplete && customComplete.call(this, res);
+          return originComplete && originComplete.call(this, res);
         };
 
-        return originRequest.call(this, reqOptions);
+        return originRequest.call(this, requestOptions);
       },
     });
   });

@@ -25,6 +25,10 @@ class Options implements CustomOptionsType {
     this.validateOption('jsErrors', jsErrors, 'string');
     this.validateTags(customTags);
   }
+  setPagePath(pagePath) {
+    this.pagePath = pagePath;
+  }
+
   validateOption(key, value, expectType) {
     if (typeof value === expectType) {
       this[key] = value;
