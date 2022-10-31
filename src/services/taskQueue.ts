@@ -6,36 +6,48 @@ export default class TaskQueue {
   private queues: any[] = [];
   private staged: any[] = [];
   private timeInterval = 60 * 1000;
-  private url: string;
+  private readonly url: string;
 
   constructor(url: string) {
     this.url = url;
+    this.fireTasks();
   }
 
-  addTask(data) {
+  addTask(data: any): void {
     this.queues.push(data);
     this.fireTasks();
   }
-  clearQueues() {
+
+  private clearQueues(): void {
     this.queues.splice(0, this.queues.length);
   }
-  clearStaged() {
+
+  private clearStaged(): void {
     this.staged.splice(0, this.staged.length);
   }
 
-  fireTasks() {
+  clearTimer(): void {
+    clearTimeout(this.timer);
+    this.timer = null;
+  }
+
+  private fireTasks(): void {
     if (this.timer) {
       return;
     }
     this.timer = setTimeout(() => {
       this.timer = null;
-      if (!this.queues || !this.queues.length) {
-        return;
-      }
-      this.staged.push(...this.queues);
-      this.clearQueues();
-      const reportUrl = options.collector + this.url;
-      report(reportUrl, this.staged, () => this.clearStaged());
+      this.reportTasks();
     }, options.traceTimeInterval || this.timeInterval);
+  }
+
+  reportTasks(): void {
+    if (!this.queues.length && !this.staged.length) {
+      return;
+    }
+    this.staged.push(...this.queues);
+    this.clearQueues();
+    const reportUrl = options.collector + this.url;
+    report(reportUrl, this.staged, () => this.clearStaged());
   }
 }
