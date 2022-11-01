@@ -64,11 +64,12 @@ export function interceptNetwork(): void {
       ) {
         const { collector, noTraceOrigins = [], pagePath, traceSDKInternal } = options;
         const { url, header = {}, fail: originFail, success: originSuccess, complete: originComplete } = requestOptions;
-        const { host, origin, path } = parseUrl(url);
 
         const startTime = now();
         const traceId = uuid();
         const traceSegmentId = uuid();
+        const { host, origin, path } = parseUrl(url);
+
         const hasTrace =
           !notTraceOrigins(origin, noTraceOrigins) || (traceSDKInternal && isSDKInternal(path, collector));
 
