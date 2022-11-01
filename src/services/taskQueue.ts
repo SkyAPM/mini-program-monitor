@@ -4,7 +4,6 @@ import { options } from '@/shared/options';
 export default class TaskQueue {
   private timer: NodeJS.Timeout;
   private queues: any[] = [];
-  private staged: any[] = [];
   private timeInterval = 60 * 1000;
   private readonly url: string;
 
@@ -18,12 +17,8 @@ export default class TaskQueue {
     this.fireTasks();
   }
 
-  private clearQueues(): void {
-    this.queues.splice(0, this.queues.length);
-  }
-
-  private clearStaged(): void {
-    this.staged.splice(0, this.staged.length);
+  private deleteTask(count: number): void {
+    this.queues.splice(0, count);
   }
 
   clearTimer(): void {
@@ -42,12 +37,11 @@ export default class TaskQueue {
   }
 
   reportTasks(): void {
-    if (!this.queues.length && !this.staged.length) {
+    if (!this.queues.length) {
       return;
     }
-    this.staged.push(...this.queues);
-    this.clearQueues();
     const reportUrl = options.collector + this.url;
-    report(reportUrl, this.staged, () => this.clearStaged());
+    const count = this.queues.length;
+    report(reportUrl, this.queues, () => this.deleteTask(count));
   }
 }

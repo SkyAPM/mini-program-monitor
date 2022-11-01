@@ -4,7 +4,7 @@ import { ErrorsCategory, GradeTypeEnum } from '@/shared/constants';
 import { errorTask } from '@/errorLog';
 
 const AppEventsHandlers = {
-  onError(msg) {
+  onError(msg: string) {
     const { collector, service, serviceVersion, pagePath } = options;
     const logInfo = {
       uniqueId: uuid(),
@@ -15,9 +15,9 @@ const AppEventsHandlers = {
       category: ErrorsCategory.JS_ERROR,
       grade: GradeTypeEnum.ERROR,
       errorUrl: '',
+      message: msg,
       // line: 0,
       // col: 0,
-      message: msg,
       // stack: error.stack,
     };
     errorTask.addTask(logInfo);
@@ -46,8 +46,22 @@ const AppEventsHandlers = {
     }
     errorTask.addTask(logInfo);
   },
-  onPageNotFound() {
-    //
+  onPageNotFound(res) {
+    const { path, query, isEntryPage } = res;
+    const { collector, service, serviceVersion, pagePath } = options;
+    const logInfo = {
+      uniqueId: uuid(),
+      collector,
+      service,
+      serviceVersion,
+      pagePath,
+      category: ErrorsCategory.RESOURCE_ERROR,
+      grade: GradeTypeEnum.ERROR,
+      errorUrl: path, // 不存在页面的路径 (代码包路径)
+      errorQuery: query, // 打开不存在页面的 query 参数
+      isEntryPage: isEntryPage, // 是否本次启动的首个页面
+    };
+    errorTask.addTask(logInfo);
   },
   onHide() {
     errorTask.reportTasks();
