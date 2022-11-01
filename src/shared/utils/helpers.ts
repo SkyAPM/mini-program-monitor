@@ -17,6 +17,5 @@ export function parseUrl(url: string): UrlFields {
 
 export function getCurrentRoute(): string {
   const currPages = getCurrentPages();
-  console.log(currPages);
   return currPages.length ? currPages[currPages.length - 1]['route'] : '';
 }
