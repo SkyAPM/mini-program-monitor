@@ -1,18 +1,16 @@
 import { report } from '@/services/report';
-import { options } from '@/shared/options';
+import { ErrorInfoFields, SegmentFields } from '@/types';
 
-export default class TaskQueue {
+const MAX_COUNT = 5;
+class TaskQueue {
   private timer: NodeJS.Timeout;
-  private queues: any[] = [];
-  private timeInterval = 60 * 1000;
-  private readonly url: string;
+  private count = 0;
+  private queues: Array<ErrorInfoFields | SegmentFields> = [];
+  public timeInterval = 60 * 1000;
+  public reportLimit = 20;
+  public reportUrl: string;
 
-  constructor(url: string) {
-    this.url = url;
-    this.fireTasks();
-  }
-
-  addTask(data: any): void {
+  addTask(data: ErrorInfoFields | SegmentFields): void {
     this.queues.push(data);
     this.fireTasks();
   }
@@ -27,21 +25,34 @@ export default class TaskQueue {
   }
 
   private fireTasks(): void {
+    if (this.queues.length >= this.reportLimit && this.count < MAX_COUNT) {
+      this.fireTasksImmediately();
+      return;
+    }
     if (this.timer) {
       return;
     }
     this.timer = setTimeout(() => {
       this.timer = null;
       this.reportTasks();
-    }, options.traceTimeInterval || this.timeInterval);
+    }, this.timeInterval);
+  }
+
+  fireTasksImmediately(): void {
+    this.count++;
+    this.clearTimer();
+    this.reportTasks();
   }
 
   reportTasks(): void {
     if (!this.queues.length) {
       return;
     }
-    const reportUrl = options.collector + this.url;
     const count = this.queues.length;
-    report(reportUrl, this.queues, () => this.deleteTask(count));
+    report(this.reportUrl, this.queues, () => {
+      this.deleteTask(count);
+    });
   }
 }
+
+export { TaskQueue };

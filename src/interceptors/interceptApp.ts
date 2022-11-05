@@ -1,14 +1,14 @@
 import { options } from '@/shared/options';
 import { uuid } from '@/shared/utils';
 import { ErrorsCategory, GradeTypeEnum } from '@/shared/constants';
-import { errorTask } from '@/errorLog';
+import { logTask } from '@/log';
+import { ErrorInfoFields } from '@/types';
 
 const AppEventsHandlers = {
   onError(msg: string) {
-    const { collector, service, serviceVersion, pagePath } = options;
-    const logInfo = {
+    const { service, serviceVersion, pagePath } = options;
+    const logInfo: ErrorInfoFields = {
       uniqueId: uuid(),
-      collector,
       service,
       serviceVersion,
       pagePath,
@@ -20,14 +20,13 @@ const AppEventsHandlers = {
       // col: 0,
       // stack: error.stack,
     };
-    errorTask.addTask(logInfo);
+    logTask.addTask(logInfo);
   },
   onUnhandledRejection(data) {
-    const { collector, service, serviceVersion, pagePath } = options;
+    const { service, serviceVersion, pagePath } = options;
     const { reason } = data;
-    const logInfo = {
+    const logInfo: ErrorInfoFields = {
       uniqueId: uuid(),
-      collector,
       service,
       serviceVersion,
       pagePath,
@@ -44,28 +43,27 @@ const AppEventsHandlers = {
     } else {
       logInfo.message = reason;
     }
-    errorTask.addTask(logInfo);
+    logTask.addTask(logInfo);
   },
-  onPageNotFound(res) {
+  onPageNotFound(res: WechatMiniprogram.App.PageNotFoundOption) {
     const { path, query, isEntryPage } = res;
-    const { collector, service, serviceVersion, pagePath } = options;
-    const logInfo = {
+    const { service, serviceVersion, pagePath } = options;
+    const logInfo: ErrorInfoFields = {
       uniqueId: uuid(),
-      collector,
       service,
       serviceVersion,
       pagePath,
+      message: '',
       category: ErrorsCategory.RESOURCE_ERROR,
       grade: GradeTypeEnum.ERROR,
       errorUrl: path, // 不存在页面的路径 (代码包路径)
       errorQuery: query, // 打开不存在页面的 query 参数
       isEntryPage: isEntryPage, // 是否本次启动的首个页面
     };
-    errorTask.addTask(logInfo);
+    logTask.addTask(logInfo);
   },
   onHide() {
-    errorTask.reportTasks();
-    errorTask.clearTimer();
+    logTask.fireTasksImmediately();
   },
 };
 

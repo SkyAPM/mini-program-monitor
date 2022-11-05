@@ -1,4 +1,8 @@
-export interface CustomOptionsType extends CustomReportOptions {
+export interface CustomOptionsType {
+  collector: string;
+  service: string;
+  pagePath: string;
+  serviceVersion: string;
   jsErrors?: boolean;
   apiErrors?: boolean;
   resourceErrors?: boolean;
@@ -6,18 +10,14 @@ export interface CustomOptionsType extends CustomReportOptions {
   useFmp?: boolean;
   enableSPA?: boolean;
   vue?: any;
+  errorLogLimit?: number;
+  errorLogTimeInterval?: number;
   traceSDKInternal?: boolean;
   detailMode?: boolean;
   noTraceOrigins?: (string | RegExp)[];
+  traceLimit?: number;
   traceTimeInterval?: number;
   customTags?: TagOption[];
-}
-
-export interface CustomReportOptions {
-  collector: string;
-  service: string;
-  pagePath: string;
-  serviceVersion: string;
 }
 
 export type TagOption = {
@@ -25,20 +25,22 @@ export type TagOption = {
   value: string;
 };
 
-export interface ErrorInfoFields {
+export interface ReportFields {
+  service: string;
+  serviceVersion: string;
+  pagePath: string;
+}
+
+export interface ErrorInfoFields extends ReportFields {
   uniqueId: string;
   category: string;
   grade: string;
   message: any;
   errorUrl: string;
+  errorQuery?: Record<string, unknown>;
+  isEntryPage?: boolean;
   line?: number;
   col?: number;
   stack?: string;
   firstReportedError?: boolean;
-}
-
-export interface ReportFields {
-  service: string;
-  serviceVersion: string;
-  pagePath: string;
 }

@@ -1,11 +1,8 @@
 import { options } from '@/shared/options';
 
 const PageEventsHandlers = {
-  onLoad() {
-    options.setPagePath(this.route);
-  },
   onShow() {
-    //
+    options.setPagePath(this.route);
   },
 };
 

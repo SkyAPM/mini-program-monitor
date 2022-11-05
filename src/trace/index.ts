@@ -1,4 +1,14 @@
 import { ReportUrl } from '@/shared/constants';
-import TaskQueue from '@/services/taskQueue';
+import { TaskQueue } from '@/services/taskQueue';
+import { CustomOptionsType } from '@/types';
 
-export const traceTask = new TaskQueue(ReportUrl.SEGMENTS);
+class TraceTask extends TaskQueue {
+  init(options: CustomOptionsType) {
+    const { collector, traceLimit, traceTimeInterval } = options;
+    this.reportLimit = traceLimit || this.reportLimit;
+    this.timeInterval = traceTimeInterval || this.timeInterval;
+    this.reportUrl = collector + ReportUrl.SEGMENTS;
+  }
+}
+
+export const traceTask = new TraceTask();

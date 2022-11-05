@@ -21,6 +21,7 @@ export enum ErrorsCategory {
   PROMISE_ERROR = 'promise',
   JS_ERROR = 'js',
   UNKNOWN_ERROR = 'unknown',
+  // MEMORY_WARNING = 'memory',
 }
 
 export const ExcludeErrorTypes: string[] = [
@@ -39,6 +40,4 @@ export const SpanLayer = 'Http';
 export const SpanType = 'Exit';
 
 export const ComponentId = 10001; // ajax
-// export const ServiceTag = '<wx-mini>';
-export const ServiceTag = '<browser>';
 export const swv = 'sw8';
