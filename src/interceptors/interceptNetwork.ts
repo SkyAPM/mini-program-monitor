@@ -1,50 +1,12 @@
-import { encode } from 'js-base64';
 import { SegmentFields, SpanFields, ErrorInfoFields, ReportFields } from '@/types';
-import {
-  ServiceTag,
-  ErrorsCategory,
-  GradeTypeEnum,
-  ReportUrl,
-  swv,
-  SpanLayer,
-  SpanType,
-  ComponentId,
-} from '@/shared/constants';
+import { ErrorsCategory, GradeTypeEnum, swv, SpanLayer, SpanType, ComponentId } from '@/shared/constants';
 import { uuid, parseUrl, now } from '@/shared/utils';
 import { options } from '@/shared/options';
+import { logTask } from '@/log';
 import { traceTask } from '@/trace';
-import { errorTask } from '@/errorLog';
+import { notTraceOrigins, isSDKInternal, generateSWHeader } from '@/trace/helpers';
 
 type Method = { method?: 'OPTIONS' | 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'TRACE' | 'CONNECT' };
-
-function notTraceOrigins(origin: string, noTraceOrigins = []): boolean {
-  return noTraceOrigins.some((rule: string | RegExp) => {
-    if (typeof rule === 'string') {
-      return origin === rule;
-    } else if (rule instanceof RegExp) {
-      return rule.test(origin);
-    }
-  });
-}
-
-function isSDKInternal(requestPath: string, collector: string): boolean {
-  const { path: collectorPath } = parseUrl(collector);
-  const pathname =
-    !collectorPath || collectorPath === '/' ? requestPath : requestPath.replace(new RegExp(`^${collectorPath}`), '');
-  const internals: string[] = [ReportUrl.ERROR, ReportUrl.ERRORS, ReportUrl.PERF, ReportUrl.SEGMENTS];
-  return internals.includes(pathname);
-}
-
-function generateSWHeader({ traceId, traceSegmentId, host, segment, pagePath }): string {
-  const traceIdStr = `${encode(traceId)}`;
-  const segmentId = `${encode(traceSegmentId)}`;
-  const service = `${encode(segment.service)}`;
-  const instance = `${encode(segment.serviceInstance)}`;
-  const endpoint = `${encode(pagePath)}`;
-  const peer = `${encode(host)}`;
-  const index = segment.spans.length;
-  return `${1}-${traceIdStr}-${segmentId}-${index}-${service}-${instance}-${endpoint}-${peer}`;
-}
 
 export function interceptNetwork(): void {
   const networkMethods = ['request', 'downloadFile', 'uploadFile'];
@@ -75,12 +37,12 @@ export function interceptNetwork(): void {
 
         const segment: SegmentFields = {
           traceId: '',
-          service: options.service + ServiceTag,
+          service: options.service,
           spans: [],
           serviceInstance: options.serviceVersion,
           traceSegmentId: '',
         };
-        const logInfo: ErrorInfoFields & ReportFields & { collector: string } = {
+        const logInfo: ErrorInfoFields = {
           uniqueId: uuid(),
           service: options.service,
           serviceVersion: options.serviceVersion,
@@ -89,7 +51,6 @@ export function interceptNetwork(): void {
           grade: GradeTypeEnum.ERROR,
           errorUrl: url,
           message: '',
-          collector: options.collector,
           stack: '',
         };
         if (hasTrace) {
@@ -107,14 +68,14 @@ export function interceptNetwork(): void {
           if (statusCode === 0 || statusCode >= 400) {
             logInfo.message = `status: ${statusCode}; statusText: ${errMsg};`;
             logInfo.stack = `request: ${data};`;
-            errorTask.addTask(logInfo);
+            logTask.addTask(logInfo);
           }
           return originSuccess && originSuccess.call(this, res);
         };
 
         requestOptions.fail = function (res: WechatMiniprogram.GeneralCallbackResult) {
           logInfo.message = `statusText: ${res.errMsg};`;
-          errorTask.addTask(logInfo);
+          logTask.addTask(logInfo);
           return originFail && originFail.call(this, res);
         };
 
