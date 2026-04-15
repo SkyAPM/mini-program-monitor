@@ -49,8 +49,8 @@ See [DEVELOPER.md](./DEVELOPER.md) for the full dev loop.
 
 ## Roadmap
 
-- **M1** — skeleton: options, queue, scheduler, console exporter, wx facade, unit tests ← *current*
-- **M2** — error collector + SkyWalking errorLogs exporter
+- **M1** — skeleton: options, queue, scheduler, console exporter, wx facade, unit tests
+- **M2** — error collector + SkyWalking errorLogs exporter ← *current*
 - **M3** — perf collector + perfData exporter
 - **M4** — network collector + `sw8` propagation + segment exporter
 - **M5** — storage-backed queue persistence + onAppHide flush

@@ -1,40 +1,49 @@
 // Entry point for the Layer B e2e harness.
 //
-// Runs the compiled SDK in a Node process with a fake wx global and a
-// custom exporter that posts to a real OAP at OAP_URL. Emits one error
-// event, then exits so the verify phase can query OAP for it via swctl.
+// Imports the compiled SDK and drives its real collectors and exporter
+// against a running OAP container. The SDK's SkyWalkingExporter uses
+// wx.request to POST — here we replace wx.request with a fetch-backed
+// implementation so the same code path works in Node.
 //
-// Prerequisite: `npm run build` in the repo root so dist/index.mjs exists.
+// Prerequisite: `npm run build` at the repo root so dist/index.mjs exists.
 
-import './fake-wx.mjs';
-import { init, record, flush } from '../../dist/index.mjs';
-import { HarnessSkyWalkingExporter } from './exporter.mjs';
+import { fakeWx, fireError } from './fake-wx.mjs';
+
+fakeWx.request = async ({ url, method, data, header, success, fail }) => {
+  try {
+    const res = await fetch(url, {
+      method,
+      body: data != null ? JSON.stringify(data) : undefined,
+      headers: header,
+    });
+    const text = await res.text();
+    let parsed = text;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      /* non-JSON body, keep as string */
+    }
+    success?.({ statusCode: res.status, data: parsed, header: {} });
+  } catch (e) {
+    fail?.({ errMsg: String(e) });
+  }
+};
+
+const { init, flush } = await import('../../dist/index.mjs');
 
 const OAP = process.env.OAP_URL ?? 'http://127.0.0.1:12800';
 const SERVICE = process.env.SERVICE ?? 'mini-program-e2e';
 
-const exporter = new HarnessSkyWalkingExporter({
-  collector: OAP,
-  service: SERVICE,
-});
-
 init({
   service: SERVICE,
   serviceInstance: 'harness-1',
+  serviceVersion: 'v0.1.0-alpha.0',
   collector: OAP,
-  exporter,
   flushInterval: 60_000,
   debug: true,
 });
 
-record('error', {
-  category: 'JS',
-  grade: 'ERROR',
-  message: 'e2e: synthetic TypeError from harness',
-  stack: 'at pages/index/index.js:42:18',
-  pagePath: 'pages/index/index',
-  errorUrl: 'pages/index/index',
-});
+fireError('TypeError: e2e synthetic error\n    at pages/index/index.js:42:18');
 
 try {
   await flush();
@@ -43,4 +52,5 @@ try {
   process.exit(1);
 }
 
+await new Promise((r) => setTimeout(r, 1000));
 console.log('[harness] done');

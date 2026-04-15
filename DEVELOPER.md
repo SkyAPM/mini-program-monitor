@@ -111,8 +111,8 @@ Each file keeps its original Apache 2.0 header plus a `// Source:` line with the
 
 ## Roadmap
 
-- **M1** — skeleton: options, queue, scheduler, console exporter, wx facade, unit tests ← *current*
-- **M2** — error collector + SkyWalking errorLogs exporter
+- **M1** — skeleton: options, queue, scheduler, console exporter, wx facade, unit tests
+- **M2** — error collector + SkyWalking errorLogs exporter ← *current*
 - **M3** — perf collector (`getPerformance` + lifecycle wrapping) + perfData exporter
 - **M4** — network collector + `sw8` propagation + segment exporter
 - **M5** — storage-backed queue persistence + onAppHide flush

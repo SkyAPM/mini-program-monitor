@@ -2,6 +2,7 @@ import type { Exporter } from '../exporters/types';
 
 export interface MonitorOptions {
   service: string;
+  serviceVersion?: string;
   serviceInstance?: string;
   collector?: string;
   exporter?: Exporter;

@@ -3,7 +3,8 @@ import type { MonitorEvent, EventKind } from './types/events';
 import { resolveOptions } from './core/options';
 import { RingQueue } from './core/queue';
 import { Scheduler } from './core/scheduler';
-import { setDebug } from './shared/log';
+import { installErrorCollector } from './collectors/error';
+import { setDebug, warn } from './shared/log';
 import { now } from './shared/time';
 
 let queue: RingQueue | null = null;
@@ -15,6 +16,11 @@ export function init(opts: MonitorOptions): void {
   queue = new RingQueue(o.maxQueue);
   scheduler = new Scheduler(queue, o.exporter, o.flushInterval);
   scheduler.start();
+  try {
+    installErrorCollector(queue, o);
+  } catch (err) {
+    warn('error collector install failed', err);
+  }
 }
 
 export function record(kind: EventKind, payload: unknown): void {
