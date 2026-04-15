@@ -13,7 +13,7 @@ services:
     networks: [e2e]
 
   oap:
-    image: skywalking/oap:latest
+    image: apache/skywalking-oap-server:latest
     depends_on:
       banyandb:
         condition: service_healthy
@@ -32,7 +32,7 @@ services:
     networks: [e2e]
 
   ui:
-    image: skywalking/ui:latest
+    image: apache/skywalking-ui:latest
     depends_on:
       oap:
         condition: service_healthy
