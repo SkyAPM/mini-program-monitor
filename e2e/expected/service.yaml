@@ -1,4 +1,7 @@
-{{- contains . }}
-- name: mini-program-e2e
+- id: {{ b64enc "mini-program-e2e" }}.1
+  name: mini-program-e2e
   group: ""
-{{- end }}
+  shortname: mini-program-e2e
+  normal: true
+  layers:
+    - BROWSER

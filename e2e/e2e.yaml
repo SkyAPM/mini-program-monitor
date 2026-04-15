@@ -25,12 +25,12 @@ setup:
 
 verify:
   retry:
-    count: 30
+    count: 60
     interval: 3s
   cases:
-    - query: ./bin/swctl --display yaml --base-url http://127.0.0.1:12800/graphql browser service ls
+    - query: ./bin/swctl --display yaml --base-url http://127.0.0.1:12800/graphql browser service ls mini-program-e2e
       expected: expected/service.yaml
-    - query: ./bin/swctl --display yaml --base-url http://127.0.0.1:12800/graphql browser logs ls --service-name mini-program-e2e
+    - query: ./bin/swctl --display yaml --base-url http://127.0.0.1:12800/graphql browser logs ls --service-name mini-program-e2e --version-name v0.1.0-alpha.0
       expected: expected/error-log.yaml
 
 cleanup:

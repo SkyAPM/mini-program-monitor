@@ -1,7 +1,16 @@
-{{- contains . }}
+logs:
+{{- contains .logs }}
 - service: mini-program-e2e
-  serviceVersion: {{ notEmpty .serviceVersion }}
-  pagePath: pages/index/index
+  serviceversion: {{ notEmpty .serviceversion }}
+  time: {{ gt .time 0 }}
+  pagepath: pages/index/index
   category: js
   grade: Error
+  message: {{ notEmpty .message }}
+  line: 0
+  col: 0
+  stack: {{ notEmpty .stack }}
+  errorurl: pages/index/index
+  firstreportederror: {{ .firstreportederror }}
 {{- end }}
+total: {{ gt .total 0 }}
