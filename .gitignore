@@ -20,7 +20,7 @@ yarn.lock*
 release/
 
 # local AI assistant state
-.claude/settings.local.json
+.claude/
 
 # e2e swctl binary (downloaded by scripts/install-swctl.sh)
 /e2e/bin/
