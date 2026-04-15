@@ -34,10 +34,16 @@ The custom exporter is a temporary stand-in. When M2 lands the real vendored Sky
 
 ## Running locally
 
-You need Docker, Node ≥ 18, and the [`skywalking-infra-e2e` CLI](https://github.com/apache/skywalking-infra-e2e):
+You need Docker, Node ≥ 18, Go ≥ 1.22, and the [`skywalking-infra-e2e` CLI](https://github.com/apache/skywalking-infra-e2e):
 
 ```bash
 go install github.com/apache/skywalking-infra-e2e/cmd/e2e@latest
+```
+
+First-time setup in the repo root:
+
+```bash
+npm ci        # from the repo root — e2e.yaml's setup step will `npm run build`
 ```
 
 Then:
@@ -48,6 +54,10 @@ e2e run -c e2e.yaml
 ```
 
 This executes setup → verify → cleanup in one shot. On success you should see the two `verify` cases pass. On failure the compose logs are preserved under the case directory.
+
+## CI
+
+This harness runs on every push and PR to `main`, plus nightly at 05:00 UTC, via [`.github/workflows/e2e.yml`](../.github/workflows/e2e.yml). The workflow installs `skywalking-infra-e2e` via `go install`, then executes the same `e2e run -c e2e.yaml` command you'd run locally.
 
 ### Running pieces by hand (debug)
 

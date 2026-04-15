@@ -1,0 +1,64 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * *'
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install skywalking-infra-e2e
+        run: |
+          go install github.com/apache/skywalking-infra-e2e/cmd/e2e@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Run Layer B end-to-end
+        working-directory: e2e
+        run: e2e run -c e2e.yaml
+
+      - name: Dump compose logs on failure
+        if: failure()
+        working-directory: e2e
+        run: |
+          echo "=== docker compose ps ==="
+          docker compose ps || true
+          echo "=== oap logs ==="
+          docker compose logs oap || true
+          echo "=== banyandb logs ==="
+          docker compose logs banyandb || true
+          echo "=== ui logs ==="
+          docker compose logs ui || true
+
+      - name: Upload swctl binary + configs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-debug
+          path: |
+            e2e/e2e.yaml
+            e2e/docker-compose.yml
+            e2e/expected/
+            e2e/harness/
+          if-no-files-found: ignore
