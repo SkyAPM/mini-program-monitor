@@ -15,6 +15,8 @@ cd example
 npm install
 ```
 
+> **Note — symlinks**: `example/.npmrc` forces `install-links=true`. WeChat's "Build npm" step does not follow symlinks, and npm's default for `file:` dependencies is to symlink. Without this flag you will see `Error: module 'mini-program-monitor.js' is not defined` in the IDE console.
+
 ## Open in WeChat Developer Tools
 
 1. Download and install the IDE: <https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html>
