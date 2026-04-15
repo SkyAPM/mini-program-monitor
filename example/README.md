@@ -15,7 +15,16 @@ cd example
 npm install
 ```
 
-> **Note — symlinks**: `example/.npmrc` forces `install-links=true`. WeChat's "Build npm" step does not follow symlinks, and npm's default for `file:` dependencies is to symlink. Without this flag you will see `Error: module 'mini-program-monitor.js' is not defined` in the IDE console.
+`npm install` runs a `postinstall` hook that copies the SDK's built output from `node_modules/mini-program-monitor/dist/` into `miniprogram_npm/mini-program-monitor/`, bypassing WeChat's "Build npm" action entirely.
+
+> **Why the manual copy?** WeChat's Build npm silently skips local `file:` dependencies because they lack the `_resolved`/`_integrity` metadata that registry-installed packages have. `install-links=true` in `.npmrc` materializes the link as a real directory, and `scripts/link-sdk.js` then stages `miniprogram_npm/` itself — two workarounds for one IDE quirk, but the result is that `npm install` is all a contributor needs to run. When the SDK is eventually published to npm, regular users can drop both and just `npm install mini-program-monitor` + Tools → Build npm as normal.
+
+When the SDK changes:
+
+```bash
+npm run build           # at repo root — rebuild dist/
+cd example && npm run relink   # restage miniprogram_npm/
+```
 
 ## Open in WeChat Developer Tools
 

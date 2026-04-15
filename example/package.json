@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "description": "Example WeChat mini-program demonstrating mini-program-monitor",
+  "scripts": {
+    "postinstall": "node scripts/link-sdk.js",
+    "relink": "node scripts/link-sdk.js"
+  },
   "dependencies": {
     "mini-program-monitor": "file:.."
   }
