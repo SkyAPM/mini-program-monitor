@@ -2,9 +2,12 @@
 # Install Apache SkyWalking CLI (swctl) into e2e/bin/swctl so that e2e.yaml
 # verify steps can call it via ./bin/swctl. Release-pinned so upgrades are
 # intentional — bump SW_CTL_VERSION below when upstream cuts a new release.
+#
+# Apache SkyWalking does not attach binaries to GitHub releases; sources
+# and binaries ship from archive.apache.org under /dist/skywalking/cli/.
 set -euo pipefail
 
-SW_CTL_VERSION="${SW_CTL_VERSION:-0.13.0}"
+SW_CTL_VERSION="${SW_CTL_VERSION:-0.14.0}"
 
 OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
 ARCH="$(uname -m)"
@@ -25,7 +28,7 @@ fi
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-URL="https://github.com/apache/skywalking-cli/releases/download/v${SW_CTL_VERSION}/skywalking-cli-${SW_CTL_VERSION}-bin.tgz"
+URL="https://archive.apache.org/dist/skywalking/cli/${SW_CTL_VERSION}/skywalking-cli-${SW_CTL_VERSION}-bin.tgz"
 echo "downloading $URL"
 curl -sSfL "$URL" -o "$TMP/swctl.tgz"
 tar -xz -C "$TMP" -f "$TMP/swctl.tgz"
