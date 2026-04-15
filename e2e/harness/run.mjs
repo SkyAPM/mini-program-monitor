@@ -29,7 +29,7 @@ fakeWx.request = async ({ url, method, data, header, success, fail }) => {
   }
 };
 
-const { init, flush } = await import('../../dist/index.mjs');
+const { init, flush, shutdown } = await import('../../dist/index.mjs');
 
 const OAP = process.env.OAP_URL ?? 'http://127.0.0.1:12800';
 const SERVICE = process.env.SERVICE ?? 'mini-program-e2e';
@@ -53,4 +53,5 @@ try {
 }
 
 await new Promise((r) => setTimeout(r, 1000));
+shutdown();
 console.log('[harness] done');
