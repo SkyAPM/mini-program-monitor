@@ -1,0 +1,9 @@
+{
+  "name": "mini-program-monitor-example",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Example WeChat mini-program demonstrating mini-program-monitor",
+  "dependencies": {
+    "mini-program-monitor": "file:.."
+  }
+}

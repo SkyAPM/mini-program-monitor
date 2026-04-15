@@ -1,0 +1,8 @@
+{{- contains . }}
+- service: mini-program-e2e
+  serviceVersion: {{ notEmpty .serviceVersion }}
+  pagePath: pages/index/index
+  category: JS
+  grade: ERROR
+  message: "e2e: synthetic TypeError from harness"
+{{- end }}

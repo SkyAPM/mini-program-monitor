@@ -1,0 +1,37 @@
+# skywalking-infra-e2e test case.
+#
+# Orchestration:
+#   setup   — docker compose up OAP+UI+BanyanDB, install swctl, build the SDK
+#             and run the Node harness to emit one BrowserErrorLog.
+#   verify  — swctl GraphQL queries compared against golden files in expected/.
+#             Retried because OAP takes a few seconds to index into BanyanDB.
+#   cleanup — docker compose down, always.
+
+setup:
+  env: compose
+  file: docker-compose.yml
+  timeout: 15m
+  init-system-environment: .env
+  steps:
+    - name: install swctl
+      command: bash scripts/install-swctl.sh
+    - name: build SDK
+      command: bash -c "cd .. && npm run build"
+    - name: emit test event
+      command: node harness/run.mjs
+      env:
+        OAP_URL: http://127.0.0.1:12800
+        SERVICE: mini-program-e2e
+
+verify:
+  retry:
+    count: 30
+    interval: 3s
+  cases:
+    - query: ./bin/swctl --display yaml --base-url http://127.0.0.1:12800/graphql browser service ls
+      expected: expected/service.yaml
+    - query: ./bin/swctl --display yaml --base-url http://127.0.0.1:12800/graphql browser logs ls --service-name mini-program-e2e
+      expected: expected/error-log.yaml
+
+cleanup:
+  on: always
