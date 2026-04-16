@@ -130,13 +130,15 @@ export function installRequestCollector(
   options: ResolvedOptions,
 ): void {
   const collectorUrl = options.collector.replace(/\/+$/, '');
+  const traceCollectorUrl = options.traceCollector.replace(/\/+$/, '');
   const urlGroupRules = options.request.urlGroupRules;
   const tracingEnabled = options.enable.tracing;
   const sampleRate = options.tracing.sampleRate;
   const urlBlacklist = options.tracing.urlBlacklist;
 
   adapter.interceptRequest((originalRequest, opts) => {
-    if (collectorUrl && opts.url.startsWith(collectorUrl)) {
+    if ((collectorUrl && opts.url.startsWith(collectorUrl)) ||
+        (traceCollectorUrl && opts.url.startsWith(traceCollectorUrl))) {
       return originalRequest(opts);
     }
 
