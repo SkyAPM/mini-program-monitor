@@ -42,6 +42,7 @@ example-wx: build
 
 example-alipay: build
 	cd example-alipay && rm -rf node_modules package-lock.json && npm install
+	@echo "Alipay example ready — open example-alipay/ in Alipay Developer Tools"
 
 examples: example-wx example-alipay
 
