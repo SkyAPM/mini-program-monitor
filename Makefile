@@ -38,10 +38,10 @@ typecheck: install
 # ── Examples ──
 
 example-wx: build
-	cd example-wx && npm install
+	cd example-wx && rm -rf node_modules miniprogram_npm package-lock.json && npm install
 
 example-alipay: build
-	cd example-alipay && npm install
+	cd example-alipay && rm -rf node_modules package-lock.json && npm install
 
 examples: example-wx example-alipay
 
