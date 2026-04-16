@@ -1,6 +1,7 @@
 import type { MonitorOptions } from './types/options';
 import type { MonitorEvent, EventKind } from './types/events';
 import type { PlatformAdapter } from './adapters/types';
+import type { Exporter } from './exporters/types';
 import { resolveOptions } from './core/options';
 import { RingQueue } from './core/queue';
 import { Scheduler } from './core/scheduler';
@@ -10,6 +11,8 @@ import { installErrorCollector } from './collectors/error';
 import { installPerfCollector } from './collectors/perf';
 import { installRequestCollector } from './collectors/request';
 import { OtlpHttpExporter } from './exporters/otlp-http';
+import { SwTraceExporter } from './exporters/sw-trace';
+import { CompositeExporter } from './exporters/composite';
 import { ConsoleExporter } from './exporters/console';
 import { setDebug, warn } from './shared/log';
 import { now } from './shared/time';
@@ -25,14 +28,23 @@ export function init(opts: MonitorOptions): void {
   adapter = detectPlatform(o.platform);
   queue = new RingQueue(o.maxQueue);
 
-  const exporter = o.collector
-    ? new OtlpHttpExporter({
+  let exporter: Exporter;
+  if (o.collector) {
+    const exporters: Exporter[] = [
+      new OtlpHttpExporter({
         collector: o.collector,
         resource: buildResource(o),
         scope: buildScope(),
         adapter,
-      })
-    : new ConsoleExporter();
+      }),
+    ];
+    if (o.enable.tracing) {
+      exporters.push(new SwTraceExporter({ collector: o.collector, adapter }));
+    }
+    exporter = exporters.length === 1 ? exporters[0] : new CompositeExporter(exporters);
+  } else {
+    exporter = new ConsoleExporter();
+  }
 
   scheduler = new Scheduler(queue, exporter, o.flushInterval);
   scheduler.start();
@@ -59,6 +71,34 @@ export function init(opts: MonitorOptions): void {
     } catch (err) {
       warn('request collector install failed', err);
     }
+  }
+
+  // M8: Flush on app hide + restore persisted events
+  try {
+    adapter.onAppHide(() => {
+      if (queue && queue.size() > 0 && scheduler) {
+        try {
+          const events = queue.drain();
+          const json = JSON.stringify(events);
+          adapter?.setStorageSync('mpm:pending', json);
+        } catch {
+          // storage write failure is not critical
+        }
+      }
+    });
+
+    const pending = adapter.getStorageSync('mpm:pending');
+    if (pending) {
+      try {
+        const events = JSON.parse(pending) as MonitorEvent[];
+        for (const e of events) queue.push(e);
+        adapter.setStorageSync('mpm:pending', '');
+      } catch {
+        // corrupted storage, discard
+      }
+    }
+  } catch {
+    // lifecycle hooks not available
   }
 }
 
