@@ -1,17 +1,22 @@
 # mini-program-monitor
 
-Monitoring agent for WeChat Mini Programs (微信小程序), reporting to Apache SkyWalking.
+Monitoring agent for WeChat (微信) and Alipay (支付宝) Mini Programs, reporting to [Apache SkyWalking](https://skywalking.apache.org/) via OTLP and SkyWalking native protocols.
 
-> **Status: pre-alpha.** Active rewrite. APIs are unstable until v0.1.0.
+> **Status: pre-alpha.** Active development. APIs are unstable until v0.1.0.
 
 ## What you get
 
-- JavaScript errors and unhandled promise rejections
-- Page lifecycle, route timing, and `wx.getPerformance()` metrics (first paint, first render, app launch, sub-package load)
-- Network traces with SkyWalking `sw8` header propagation across `wx.request` / `downloadFile` / `uploadFile`
-- Memory warnings, network status, scene values
+- **Error tracking** — JS errors, unhandled promise rejections, page-not-found events. Reported as OTLP logs with OTel semantic conventions (`exception.type`, `exception.stacktrace`).
+- **Performance metrics** — app launch, first render, first paint, route navigation, script execution, sub-package load. Reported as OTLP gauge metrics (`miniprogram.app_launch.duration`, etc.).
+- **Request metrics** *(planned M6)* — `wx.request`/`my.request` duration, status, size by domain. Reported as OTLP metrics.
+- **Distributed tracing** *(planned M7, opt-in)* — `sw8` header propagation across outgoing requests. Reported as SkyWalking `SegmentObject` to `/v3/segments`.
 
-All data is reported to Apache SkyWalking OAP using the same wire format as [skywalking-client-js](https://github.com/apache/skywalking-client-js), so existing browser dashboards work unchanged.
+## Supported platforms
+
+| Platform | Global | Error hooks | Perf API | Status |
+|---|---|---|---|---|
+| **WeChat** (微信) | `wx.*` | `wx.onError`, `wx.onUnhandledRejection`, `wx.onPageNotFound` | `wx.getPerformance()` + PerformanceObserver | Implemented |
+| **Alipay** (支付宝) | `my.*` | `my.onError`, `my.onUnhandledRejection` | Lifecycle-based fallback (no `my.getPerformance`) | Adapter ready, perf fallback planned M5 |
 
 ## Install
 
@@ -24,7 +29,7 @@ Then in WeChat Developer Tools: **Tools → Build npm** (工具 → 构建 npm).
 ## Quickstart
 
 ```js
-// app.js
+// app.js (WeChat)
 const { init } = require('mini-program-monitor');
 
 App({
@@ -37,23 +42,82 @@ App({
 });
 ```
 
+```js
+// app.js (Alipay)
+const { init } = require('mini-program-monitor');
+
+App({
+  onLaunch() {
+    init({
+      service: 'my-mini-program',
+      collector: 'https://your-skywalking-oap.example.com',
+      platform: 'alipay',
+    });
+  },
+});
+```
+
 ## Options
 
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `service` | `string` | required | Service name shown in SkyWalking |
-| `serviceInstance` | `string` | auto | Instance identifier; auto-generated if omitted |
-| `collector` | `string` | required for skywalking exporter | OAP base URL |
-| `sampleRate` | `number` | `1.0` | Trace sample rate, 0–1. Errors are always sampled. |
-| `maxQueue` | `number` | `200` | Max events buffered before drop-oldest |
-| `flushInterval` | `number` | `5000` | Flush cadence in ms |
-| `debug` | `boolean` | `false` | Verbose console logging |
+```ts
+init({
+  // Required
+  service: 'my-mini-program',
+  collector: 'https://oap.example.com',
+
+  // Optional
+  serviceVersion: 'v1.2.0',         // default 'v0.0.0'
+  serviceInstance: 'instance-uuid',  // default auto-generated
+  platform: 'wechat',               // 'wechat' | 'alipay', auto-detected if omitted
+
+  // Feature flags
+  enable: {
+    error: true,       // default true  — error logs via OTLP
+    perf: true,        // default true  — perf metrics via OTLP
+    request: true,     // default true  — request metrics via OTLP (planned)
+    tracing: false,    // default false — sw8 header injection + trace segments (planned)
+  },
+
+  // Tracing options (when enable.tracing = true)
+  tracing: {
+    sampleRate: 1.0,
+    urlBlacklist: [/\/heartbeat/],
+  },
+
+  // Transport
+  maxQueue: 200,       // default 200, ring buffer drop-oldest
+  flushInterval: 5000, // default 5000ms
+
+  debug: false,        // default false
+});
+```
+
+## Data flow
+
+```
+Mini-program SDK              Apache SkyWalking OAP
+────────────────              ─────────────────────
+Error logs     ──→ OTLP JSON ──→ POST /v1/logs     ──→ LAL rules ──→ Log storage
+Perf metrics   ──→ OTLP JSON ──→ POST /v1/metrics  ──→ MAL rules ──→ Metric storage
+Request metrics ──→ OTLP JSON ──→ POST /v1/metrics  ──→ MAL rules ──→ Metric storage
+Trace segments ──→ SW native ──→ POST /v3/segments  ──→ Trace storage + topology
+```
+
+OTLP resource attributes identify the service:
+
+| Attribute | Example |
+|---|---|
+| `service.name` | `my-mini-program` |
+| `service.version` | `v1.2.0` |
+| `miniprogram.platform` | `wechat` or `alipay` |
+| `telemetry.sdk.name` | `mini-program-monitor` |
 
 ## Compatibility
 
 - WeChat base library ≥ 2.11 (for `wx.getPerformance`)
-- WeChat Developer Tools ≥ 1.05
-- Apache SkyWalking OAP ≥ 9.0
+- Alipay base library ≥ 2.0
+- Apache SkyWalking OAP ≥ 10.x (with OTLP HTTP receiver)
+- Any OTLP-compatible backend (OTel Collector, Grafana, etc.)
 
 ## License
 
