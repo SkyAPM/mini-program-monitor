@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SkyWalkingExporter } from '../../src/exporters/skywalking';
 import type { MonitorEvent } from '../../src/types/events';
-import type { BrowserErrorLog } from '../../src/vendor/skywalking/protocol';
+import type { BrowserErrorLog, BrowserPerfData } from '../../src/vendor/skywalking/protocol';
 
 type RequestOpts = {
   url: string;
@@ -79,5 +79,35 @@ describe('SkyWalkingExporter', () => {
   it('exposes the collector URL for loop-prevention', () => {
     const exporter = new SkyWalkingExporter({ collector: 'http://oap.example:12800/' });
     expect(exporter.getCollectorUrl()).toBe('http://oap.example:12800');
+  });
+
+  it('POSTs perf events individually to /browser/perfData', async () => {
+    requestMock.mockImplementation((opts: RequestOpts) => opts.success?.({ statusCode: 200 }));
+    const exporter = new SkyWalkingExporter({ collector: 'http://oap.example:12800' });
+    const perfData: BrowserPerfData = {
+      service: 'svc',
+      serviceVersion: 'v1',
+      pagePath: 'pages/index/index',
+      loadPageTime: 1000,
+      fptTime: 300,
+    };
+    await exporter.export([{ kind: 'perf', time: 1, payload: perfData }]);
+    expect(requestMock).toHaveBeenCalledOnce();
+    const call = requestMock.mock.calls[0][0] as RequestOpts;
+    expect(call.url).toBe('http://oap.example:12800/browser/perfData');
+    expect(call.data).toEqual(perfData);
+  });
+
+  it('POSTs errors and perf in parallel', async () => {
+    requestMock.mockImplementation((opts: RequestOpts) => opts.success?.({ statusCode: 200 }));
+    const exporter = new SkyWalkingExporter({ collector: 'http://oap.example:12800' });
+    await exporter.export([
+      errorEvent(),
+      { kind: 'perf', time: 2, payload: { service: 'svc', serviceVersion: 'v1', pagePath: '/' } },
+    ]);
+    expect(requestMock).toHaveBeenCalledTimes(2);
+    const urls = requestMock.mock.calls.map((c: unknown[]) => (c[0] as RequestOpts).url);
+    expect(urls).toContain('http://oap.example:12800/browser/errorLogs');
+    expect(urls).toContain('http://oap.example:12800/browser/perfData');
   });
 });

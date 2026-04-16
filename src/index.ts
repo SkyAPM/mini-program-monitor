@@ -4,6 +4,7 @@ import { resolveOptions } from './core/options';
 import { RingQueue } from './core/queue';
 import { Scheduler } from './core/scheduler';
 import { installErrorCollector } from './collectors/error';
+import { installPerfCollector } from './collectors/perf';
 import { setDebug, warn } from './shared/log';
 import { now } from './shared/time';
 
@@ -20,6 +21,11 @@ export function init(opts: MonitorOptions): void {
     installErrorCollector(queue, o);
   } catch (err) {
     warn('error collector install failed', err);
+  }
+  try {
+    installPerfCollector(queue, o);
+  } catch (err) {
+    warn('perf collector install failed', err);
   }
 }
 
