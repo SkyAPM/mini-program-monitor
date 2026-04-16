@@ -2,7 +2,8 @@ import type { OtlpResource, OtlpKeyValue, OtlpInstrumentationScope } from '../ty
 import type { ResolvedOptions } from './options';
 
 const SDK_NAME = 'mini-program-monitor';
-const SDK_VERSION = '0.1.0';
+declare const __SDK_VERSION__: string;
+const SDK_VERSION = typeof __SDK_VERSION__ !== 'undefined' ? __SDK_VERSION__ : '0.0.0';
 
 export function buildResource(options: ResolvedOptions): OtlpResource {
   const attrs: OtlpKeyValue[] = [
