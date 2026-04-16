@@ -1,0 +1,12 @@
+{
+  "enableAppxNg": true,
+  "miniprogramRoot": ".",
+  "pluginRoot": "",
+  "scripts": {
+    "beforeCompile": ""
+  },
+  "include": [],
+  "exclude": ["node_modules/**"],
+  "enableNodeModules": true,
+  "format": 2
+}

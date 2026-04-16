@@ -14,16 +14,28 @@ setup:
   steps:
     - name: build SDK
       command: bash -c "cd .. && npm run build"
-    - name: emit test events
+    - name: emit WeChat test events
       command: node harness/run.mjs
       env:
         COLLECTOR_URL: http://127.0.0.1:4318
+    - name: emit Alipay test events
+      command: node harness/run-alipay.mjs
+      env:
+        COLLECTOR_URL: http://127.0.0.1:4318
+    - name: emit trace test events
+      command: node harness/run-tracing.mjs
+      env:
+        COLLECTOR_URL: http://127.0.0.1:12801
     - name: wait for collector flush
       command: sleep 5
-    - name: verify OTLP data
+    - name: verify OTLP data (both platforms)
       command: node verify/check-otlp.mjs
       env:
         COMPOSE_DIR: .
+    - name: verify trace segments
+      command: node verify/check-traces.mjs
+      env:
+        MOCK_COLLECTOR_URL: http://127.0.0.1:12801
 
 verify:
   retry:

@@ -42,10 +42,15 @@ assert(logs.includes('SeverityText: ERROR'), 'log severity ERROR');
 assert(logs.includes('TypeError'), 'log body contains TypeError');
 assert(logs.includes('exception.type'), 'log has exception.type attribute');
 
-// Resource verification
+// Resource verification — WeChat
 assert(logs.includes('mini-program-e2e'), 'resource service.name = mini-program-e2e');
 assert(logs.includes('miniprogram.platform'), 'resource has miniprogram.platform');
-assert(logs.includes('wechat'), 'resource platform value = wechat');
+assert(logs.includes('Str(wechat)'), 'resource platform value = wechat');
+
+// Alipay verification
+assert(logs.includes('alipay-e2e'), 'alipay resource service.name = alipay-e2e');
+assert(logs.includes('Str(alipay)'), 'alipay resource platform value = alipay');
+assert(logs.includes('alipay test error'), 'alipay error log body present');
 
 if (!ok) {
   console.error('\n[verify] --- full otel-collector logs ---');

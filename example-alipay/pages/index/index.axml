@@ -1,0 +1,9 @@
+<view class="container">
+  <view class="title">mini-program-monitor (Alipay)</view>
+  <view class="hint">Open the debugger console and watch events flow.</view>
+
+  <button onTap="onThrowError">Throw JS error</button>
+  <button onTap="onRejectPromise">Reject promise</button>
+  <button onTap="onRequest">my.request</button>
+  <button onTap="onFlush">Flush now</button>
+</view>

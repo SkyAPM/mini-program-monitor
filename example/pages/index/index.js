@@ -12,11 +12,15 @@ Page({
   },
 
   onRecordError() {
-    record('error', {
-      category: 'JS',
-      grade: 'ERROR',
-      message: 'demo: manually recorded error',
-      pagePath: 'pages/index/index',
+    record('log', {
+      timeUnixNano: String(Date.now()) + '000000',
+      severityNumber: 17,
+      severityText: 'ERROR',
+      body: { stringValue: 'demo: manually recorded error' },
+      attributes: [
+        { key: 'exception.type', value: { stringValue: 'manual' } },
+        { key: 'miniprogram.page.path', value: { stringValue: 'pages/index/index' } },
+      ],
     });
     flush();
   },
