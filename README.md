@@ -25,19 +25,7 @@ Monitoring agent for WeChat (微信) and Alipay (支付宝) Mini Programs, repor
 npm install mini-program-monitor
 ```
 
-**WeChat:** In Developer Tools, click **Tools → Build npm** (工具 → 构建 npm).
-
-**Alipay:** The SDK targets ES2017. Alipay's compiler requires ES5 by default, so add a transpile rule in `mini.project.json`:
-
-```json
-{
-  "compileOptions": {
-    "transpile": {
-      "include": ["node_modules/mini-program-monitor"]
-    }
-  }
-}
-```
+Then in WeChat Developer Tools: **Tools → Build npm** (工具 → 构建 npm).
 
 ## Quickstart
 

@@ -10,10 +10,5 @@
   "exclude": [
     "node_modules/**"
   ],
-  "enableNodeModules": true,
-  "compileOptions": {
-    "transpile": {
-      "include": ["node_modules/mini-program-monitor"]
-    }
-  }
+  "enableNodeModules": true
 }
