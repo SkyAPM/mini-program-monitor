@@ -34,6 +34,9 @@ assert(logs.includes('miniprogram.app_launch.duration'), 'metric miniprogram.app
 assert(logs.includes('miniprogram.first_render.duration'), 'metric miniprogram.first_render.duration');
 assert(logs.includes('miniprogram.first_paint.time'), 'metric miniprogram.first_paint.time');
 
+// Request metrics
+assert(logs.includes('miniprogram.request.duration'), 'metric miniprogram.request.duration exists');
+
 // Log verification
 assert(logs.includes('SeverityText: ERROR'), 'log severity ERROR');
 assert(logs.includes('TypeError'), 'log body contains TypeError');

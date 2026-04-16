@@ -50,6 +50,20 @@ firePerfEntries([
 // Fire error → produces OTLP log via real error collector
 fireError('TypeError: e2e synthetic error\n    at pages/index/index.js:42:18');
 
+// Make a request through the patched global wx.request.
+// The SDK's interceptRequest has monkey-patched wx.request, so this
+// call goes through the request collector wrapper which records
+// timing + status as OTLP metrics.
+await new Promise((resolve) => {
+  globalThis.wx.request({
+    url: 'https://httpbin.org/get',
+    method: 'GET',
+    header: {},
+    success: () => resolve(),
+    fail: () => resolve(),
+  });
+});
+
 try {
   await flush();
 } catch (err) {

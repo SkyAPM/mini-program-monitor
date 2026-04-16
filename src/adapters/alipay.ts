@@ -76,6 +76,35 @@ export function createAlipayAdapter(): PlatformAdapter {
     onAppShow: (cb) => my.onAppShow(cb),
     onAppHide: (cb) => my.onAppHide(cb),
 
+    interceptRequest(wrapper) {
+      const originalMy = my.request.bind(my);
+      my.request = ((reqOpts: Parameters<typeof my.request>[0]) => {
+        const adapted: AdapterRequestOpts = {
+          url: reqOpts.url,
+          method: reqOpts.method ?? 'GET',
+          data: reqOpts.data,
+          headers: (reqOpts.headers ?? {}) as Record<string, string>,
+          onSuccess: (code, data, headers) =>
+            reqOpts.success?.({ status: code, data, headers }),
+          onFail: (msg) =>
+            reqOpts.fail?.({ errorMessage: msg }),
+        };
+        wrapper(
+          (opts) => {
+            originalMy({
+              url: opts.url,
+              method: opts.method,
+              data: opts.data,
+              headers: opts.headers,
+              success: (res) => opts.onSuccess(res.status, res.data, res.headers),
+              fail: (err) => opts.onFail(err?.errorMessage ?? 'my.request failed'),
+            });
+          },
+          adapted,
+        );
+      }) as typeof my.request;
+    },
+
     hasPerformanceObserver: false,
 
     wrapApp: (hooks) => wrapConstructor('App', hooks),

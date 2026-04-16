@@ -56,10 +56,10 @@ jobs:
           docker compose logs oap || true
           echo "=== banyandb logs ==="
           docker compose logs banyandb || true
-          echo "=== ui logs ==="
-          docker compose logs ui || true
+          echo "=== otel-collector logs ==="
+          docker compose logs otel-collector || true
 
-      - name: Upload swctl binary + configs on failure
+      - name: Upload e2e configs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -67,6 +67,6 @@ jobs:
           path: |
             e2e/e2e.yaml
             e2e/docker-compose.yml
-            e2e/expected/
             e2e/harness/
+            e2e/verify/
           if-no-files-found: ignore

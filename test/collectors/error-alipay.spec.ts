@@ -22,6 +22,7 @@ function createFakeAlipayAdapter(): PlatformAdapter {
     hasPerformanceObserver: false,
     getSystemInfoSync: () => ({ brand: '', model: '', SDKVersion: '', platform: '', system: '' }),
     setStorageSync: vi.fn(),
+    interceptRequest: vi.fn(),
     getStorageSync: () => '',
   };
 }

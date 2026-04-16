@@ -8,6 +8,7 @@ import { buildResource, buildScope } from './core/resource';
 import { detectPlatform } from './adapters/detect';
 import { installErrorCollector } from './collectors/error';
 import { installPerfCollector } from './collectors/perf';
+import { installRequestCollector } from './collectors/request';
 import { OtlpHttpExporter } from './exporters/otlp-http';
 import { ConsoleExporter } from './exporters/console';
 import { setDebug, warn } from './shared/log';
@@ -49,6 +50,14 @@ export function init(opts: MonitorOptions): void {
       installPerfCollector(adapter, queue, o);
     } catch (err) {
       warn('perf collector install failed', err);
+    }
+  }
+
+  if (o.enable.request) {
+    try {
+      installRequestCollector(adapter, queue, o);
+    } catch (err) {
+      warn('request collector install failed', err);
     }
   }
 }

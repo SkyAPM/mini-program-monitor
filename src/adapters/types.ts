@@ -62,6 +62,13 @@ export interface PlatformAdapter {
     onHide?: LifecycleHook;
   }): void;
 
+  interceptRequest(
+    wrapper: (
+      originalRequest: (opts: AdapterRequestOpts) => void,
+      opts: AdapterRequestOpts,
+    ) => void,
+  ): void;
+
   getSystemInfoSync(): { brand: string; model: string; SDKVersion: string; platform: string; system: string };
 
   setStorageSync(key: string, data: string): void;

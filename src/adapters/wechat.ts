@@ -56,6 +56,35 @@ export function createWechatAdapter(): PlatformAdapter {
     hasPerformanceObserver: true,
     getPerformance: () => wx.getPerformance() as unknown as PerfHandle,
 
+    interceptRequest(wrapper) {
+      const originalWx = wx.request.bind(wx);
+      wx.request = ((reqOpts: WechatMiniprogram.RequestOption) => {
+        const adapted: AdapterRequestOpts = {
+          url: reqOpts.url,
+          method: (reqOpts.method ?? 'GET') as string,
+          data: reqOpts.data,
+          headers: (reqOpts.header ?? {}) as Record<string, string>,
+          onSuccess: (code, data, headers) =>
+            reqOpts.success?.({ statusCode: code, data, header: headers } as WechatMiniprogram.RequestSuccessCallbackResult),
+          onFail: (msg) =>
+            reqOpts.fail?.({ errMsg: msg } as WechatMiniprogram.GeneralCallbackResult),
+        };
+        wrapper(
+          (opts) => {
+            originalWx({
+              url: opts.url,
+              method: opts.method as WechatMiniprogram.RequestOption['method'],
+              data: opts.data as WechatMiniprogram.IAnyObject,
+              header: opts.headers,
+              success: (res) => opts.onSuccess(res.statusCode, res.data, res.header as Record<string, string>),
+              fail: (err) => opts.onFail(err?.errMsg ?? 'wx.request failed'),
+            });
+          },
+          adapted,
+        );
+      }) as typeof wx.request;
+    },
+
     wrapApp: (hooks) => wrapConstructor('App', hooks),
     wrapPage: (hooks) => wrapConstructor('Page', hooks),
 
