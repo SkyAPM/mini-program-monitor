@@ -1,15 +1,9 @@
 import type { RingQueue } from '../core/queue';
 import type { ResolvedOptions } from '../core/options';
-import { getWx } from '../shared/wx';
+import type { PlatformAdapter } from '../adapters/types';
+import type { OtlpLogRecord, OtlpKeyValue } from '../types/otlp';
 import { warn } from '../shared/log';
 import { now } from '../shared/time';
-import uuid from '../vendor/skywalking/uuid';
-import { ErrorsCategory, GradeTypeEnum } from '../vendor/skywalking/constant';
-import type { BrowserErrorLog } from '../vendor/skywalking/protocol';
-
-type WxError = (msg: string) => void;
-type WxRejection = (res: { reason: unknown; promise?: unknown }) => void;
-type WxPageNotFound = (res: { path: string; query?: Record<string, string>; isEntryPage?: boolean }) => void;
 
 function currentPagePath(): string {
   try {
@@ -19,90 +13,97 @@ function currentPagePath(): string {
       return pages[pages.length - 1]?.route ?? 'unknown';
     }
   } catch {
-    // ignored — currentPagePath must never throw
+    // ignored
   }
   return 'unknown';
 }
 
-export function installErrorCollector(queue: RingQueue, options: ResolvedOptions): void {
-  const wx = getWx();
+function toNanos(ms: number): string {
+  return ms + '000000';
+}
 
-  const push = (log: BrowserErrorLog): void => {
-    queue.push({ kind: 'error', time: now(), payload: log });
+function buildLogRecord(
+  message: string,
+  exceptionType: string,
+  stack: string,
+  pagePath: string,
+): OtlpLogRecord {
+  const attrs: OtlpKeyValue[] = [
+    { key: 'exception.type', value: { stringValue: exceptionType } },
+    { key: 'exception.stacktrace', value: { stringValue: stack } },
+    { key: 'miniprogram.page.path', value: { stringValue: pagePath } },
+  ];
+  return {
+    timeUnixNano: toNanos(Date.now()),
+    severityNumber: 17, // ERROR
+    severityText: 'ERROR',
+    body: { stringValue: message },
+    attributes: attrs,
   };
+}
 
-  const base = (): Pick<BrowserErrorLog, 'service' | 'serviceVersion' | 'uniqueId'> => ({
-    service: options.service,
-    serviceVersion: options.serviceVersion,
-    uniqueId: uuid(),
-  });
-
+export function installErrorCollector(
+  adapter: PlatformAdapter,
+  queue: RingQueue,
+  _options: ResolvedOptions,
+): void {
   try {
-    (wx.onError as (cb: WxError) => void)((stack) => {
+    adapter.onError((stack) => {
       try {
         const text = typeof stack === 'string' ? stack : String(stack ?? '');
         const nl = text.indexOf('\n');
         const message = nl === -1 ? text : text.slice(0, nl);
         const rest = nl === -1 ? '' : text.slice(nl + 1);
         const page = currentPagePath();
-        push({
-          ...base(),
-          pagePath: page,
-          category: ErrorsCategory.JS_ERROR,
-          grade: GradeTypeEnum.ERROR,
-          message,
-          stack: rest,
-          errorUrl: page,
-        });
+        queue.push({ kind: 'log', time: now(), payload: buildLogRecord(message, 'js', rest, page) });
       } catch (err) {
         warn('error collector onError handler failed', err);
       }
     });
   } catch (err) {
-    warn('wx.onError registration failed', err);
+    warn('adapter.onError registration failed', err);
   }
 
   try {
-    (wx.onUnhandledRejection as (cb: WxRejection) => void)((res) => {
+    adapter.onUnhandledRejection((res) => {
       try {
         const reason = res?.reason;
         const asError = reason instanceof Error ? reason : null;
         const page = currentPagePath();
-        push({
-          ...base(),
-          pagePath: page,
-          category: ErrorsCategory.PROMISE_ERROR,
-          grade: GradeTypeEnum.ERROR,
-          message: asError?.message ?? String(reason ?? 'unhandled rejection'),
-          stack: asError?.stack ?? '',
-          errorUrl: page,
+        queue.push({
+          kind: 'log',
+          time: now(),
+          payload: buildLogRecord(
+            asError?.message ?? String(reason ?? 'unhandled rejection'),
+            'promise',
+            asError?.stack ?? '',
+            page,
+          ),
         });
       } catch (err) {
         warn('error collector onUnhandledRejection handler failed', err);
       }
     });
   } catch (err) {
-    warn('wx.onUnhandledRejection registration failed', err);
+    warn('adapter.onUnhandledRejection registration failed', err);
   }
 
-  try {
-    (wx.onPageNotFound as (cb: WxPageNotFound) => void)((res) => {
-      try {
-        const path = res?.path ?? 'unknown';
-        push({
-          ...base(),
-          pagePath: path,
-          category: ErrorsCategory.UNKNOWN_ERROR,
-          grade: GradeTypeEnum.ERROR,
-          message: `page not found: ${path}`,
-          stack: '',
-          errorUrl: path,
-        });
-      } catch (err) {
-        warn('error collector onPageNotFound handler failed', err);
-      }
-    });
-  } catch (err) {
-    warn('wx.onPageNotFound registration failed', err);
+  if (adapter.onPageNotFound) {
+    try {
+      adapter.onPageNotFound((res) => {
+        try {
+          const path = res?.path ?? 'unknown';
+          queue.push({
+            kind: 'log',
+            time: now(),
+            payload: buildLogRecord(`page not found: ${path}`, 'pageNotFound', '', path),
+          });
+        } catch (err) {
+          warn('error collector onPageNotFound handler failed', err);
+        }
+      });
+    } catch (err) {
+      warn('adapter.onPageNotFound registration failed', err);
+    }
   }
 }

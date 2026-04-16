@@ -42,5 +42,18 @@ services:
       - "8080:8080"
     networks: [e2e]
 
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "4318:4318"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:13133"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    networks: [e2e]
+
 networks:
   e2e:

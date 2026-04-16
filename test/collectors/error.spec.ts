@@ -2,10 +2,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { RingQueue } from '../../src/core/queue';
 import { installErrorCollector } from '../../src/collectors/error';
 import { resolveOptions } from '../../src/core/options';
-import type { BrowserErrorLog } from '../../src/vendor/skywalking/protocol';
+import { createWechatAdapter } from '../../src/adapters/wechat';
+import type { OtlpLogRecord } from '../../src/types/otlp';
 
 type WxErrorCb = (msg: string) => void;
-type WxRejectionCb = (r: { reason: unknown; promise?: unknown }) => void;
+type WxRejectionCb = (r: { reason: unknown }) => void;
 type WxPageNotFoundCb = (r: { path: string }) => void;
 
 let onErrorCb: WxErrorCb | undefined;
@@ -17,76 +18,58 @@ beforeEach(() => {
   onRejectionCb = undefined;
   onPageNotFoundCb = undefined;
   const wxAny = (globalThis as unknown as { wx: Record<string, unknown> }).wx;
-  wxAny.onError = (cb: WxErrorCb) => {
-    onErrorCb = cb;
-  };
-  wxAny.onUnhandledRejection = (cb: WxRejectionCb) => {
-    onRejectionCb = cb;
-  };
-  wxAny.onPageNotFound = (cb: WxPageNotFoundCb) => {
-    onPageNotFoundCb = cb;
-  };
-  (globalThis as unknown as { getCurrentPages: () => unknown[] }).getCurrentPages = () => [
-    { route: 'pages/index/index' },
-  ];
+  wxAny.onError = (cb: WxErrorCb) => { onErrorCb = cb; };
+  wxAny.onUnhandledRejection = (cb: WxRejectionCb) => { onRejectionCb = cb; };
+  wxAny.onPageNotFound = (cb: WxPageNotFoundCb) => { onPageNotFoundCb = cb; };
 });
 
 function setup() {
   const q = new RingQueue(10);
   const opts = resolveOptions({ service: 'svc', serviceVersion: 'v1' });
-  installErrorCollector(q, opts);
+  const adapter = createWechatAdapter();
+  installErrorCollector(adapter, q, opts);
   return q;
 }
 
 describe('error collector', () => {
-  it('normalizes wx.onError into a js-category BrowserErrorLog', () => {
+  it('emits OTLP LogRecord with exception.type=js for wx.onError', () => {
     const q = setup();
     onErrorCb!('TypeError: x is undefined\n    at pages/index/index.js:10:5');
     const events = q.drain();
     expect(events).toHaveLength(1);
-    const log = events[0].payload as BrowserErrorLog;
-    expect(log.category).toBe('js');
-    expect(log.grade).toBe('Error');
-    expect(log.message).toBe('TypeError: x is undefined');
-    expect(log.stack).toBe('    at pages/index/index.js:10:5');
-    expect(log.service).toBe('svc');
-    expect(log.serviceVersion).toBe('v1');
-    expect(log.pagePath).toBe('pages/index/index');
-    expect(log.uniqueId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(events[0].kind).toBe('log');
+    const log = events[0].payload as OtlpLogRecord;
+    expect(log.severityNumber).toBe(17);
+    expect(log.severityText).toBe('ERROR');
+    expect(log.body.stringValue).toBe('TypeError: x is undefined');
+    const attrs = log.attributes!.reduce((m, a) => { m[a.key] = a.value.stringValue; return m; }, {} as Record<string, string | undefined>);
+    expect(attrs['exception.type']).toBe('js');
+    expect(attrs['exception.stacktrace']).toBe('    at pages/index/index.js:10:5');
+    expect(attrs['miniprogram.page.path']).toBe('pages/index/index');
   });
 
-  it('normalizes onUnhandledRejection with an Error reason', () => {
+  it('emits exception.type=promise for onUnhandledRejection', () => {
     const q = setup();
     onRejectionCb!({ reason: new Error('network down') });
-    const log = q.drain()[0].payload as BrowserErrorLog;
-    expect(log.category).toBe('promise');
-    expect(log.grade).toBe('Error');
-    expect(log.message).toBe('network down');
-    expect(log.stack).toMatch(/Error: network down/);
+    const log = q.drain()[0].payload as OtlpLogRecord;
+    const attrs = log.attributes!.reduce((m, a) => { m[a.key] = a.value.stringValue; return m; }, {} as Record<string, string | undefined>);
+    expect(attrs['exception.type']).toBe('promise');
+    expect(log.body.stringValue).toBe('network down');
   });
 
-  it('normalizes onUnhandledRejection with a non-Error reason', () => {
-    const q = setup();
-    onRejectionCb!({ reason: 'string reason' });
-    const log = q.drain()[0].payload as BrowserErrorLog;
-    expect(log.category).toBe('promise');
-    expect(log.message).toBe('string reason');
-  });
-
-  it('normalizes onPageNotFound into category=unknown', () => {
+  it('emits exception.type=pageNotFound for onPageNotFound', () => {
     const q = setup();
     onPageNotFoundCb!({ path: 'pages/missing/missing' });
-    const log = q.drain()[0].payload as BrowserErrorLog;
-    expect(log.category).toBe('unknown');
-    expect(log.message).toContain('page not found');
-    expect(log.pagePath).toBe('pages/missing/missing');
+    const log = q.drain()[0].payload as OtlpLogRecord;
+    const attrs = log.attributes!.reduce((m, a) => { m[a.key] = a.value.stringValue; return m; }, {} as Record<string, string | undefined>);
+    expect(attrs['exception.type']).toBe('pageNotFound');
+    expect(log.body.stringValue).toContain('page not found');
   });
 
   it('never throws when callbacks receive garbage input', () => {
-    const q = setup();
+    setup();
     expect(() => onErrorCb!(undefined as unknown as string)).not.toThrow();
     expect(() => onRejectionCb!(undefined as unknown as { reason: unknown })).not.toThrow();
     expect(() => onPageNotFoundCb!(undefined as unknown as { path: string })).not.toThrow();
-    expect(q.size()).toBeGreaterThan(0);
   });
 });

@@ -1,19 +1,14 @@
 // Entry point for the Layer B e2e harness.
 //
-// Imports the compiled SDK and drives its real collectors and exporter
-// against a running OAP container. The SDK's SkyWalkingExporter uses
-// wx.request to POST — here we replace wx.request with a fetch-backed
-// implementation so the same code path works in Node.
-//
-// The harness fires synthetic perf entries (to register the browser
-// service in OAP) and an error (to verify error log ingestion), then
-// flushes and exits.
-//
-// Prerequisite: `npm run build` at the repo root so dist/index.mjs exists.
+// Runs the compiled SDK in Node with a fake wx global. The SDK's OTLP
+// exporter uses wx.request (via the wechat adapter) — here we replace
+// wx.request with a fetch-backed implementation so HTTP reaches the
+// real OTel Collector and OAP containers.
 
-import { fakeWx, fireError, firePerfEntries } from './fake-wx.mjs';
+import { fireError, firePerfEntries } from './fake-wx.mjs';
 
-fakeWx.request = async ({ url, method, data, header, success, fail }) => {
+// Patch wx.request to use Node's global fetch
+globalThis.wx.request = async ({ url, method, data, header, success, fail }) => {
   try {
     const res = await fetch(url, {
       method,
@@ -22,11 +17,7 @@ fakeWx.request = async ({ url, method, data, header, success, fail }) => {
     });
     const text = await res.text();
     let parsed = text;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      /* non-JSON body, keep as string */
-    }
+    try { parsed = JSON.parse(text); } catch { /* keep as string */ }
     success?.({ statusCode: res.status, data: parsed, header: {} });
   } catch (e) {
     fail?.({ errMsg: String(e) });
@@ -35,29 +26,28 @@ fakeWx.request = async ({ url, method, data, header, success, fail }) => {
 
 const { init, flush, shutdown } = await import('../../dist/index.mjs');
 
-const OAP = process.env.OAP_URL ?? 'http://127.0.0.1:12800';
+const COLLECTOR = process.env.COLLECTOR_URL ?? 'http://127.0.0.1:4318';
 const SERVICE = process.env.SERVICE ?? 'mini-program-e2e';
 const VERSION = process.env.SERVICE_VERSION ?? 'v0.1.0-alpha.0';
 
 init({
   service: SERVICE,
-  serviceInstance: 'harness-1',
   serviceVersion: VERSION,
-  collector: OAP,
+  serviceInstance: 'harness-1',
+  collector: COLLECTOR,
+  platform: 'wechat',
   flushInterval: 60_000,
   debug: true,
 });
 
-// Fire synthetic perf entries through the real perf collector.
-// The appLaunch + firstRender entries produce a BrowserPerfData POST
-// that registers the browser service in OAP's inventory.
+// Fire synthetic perf entries → produces OTLP metrics via real perf collector
 firePerfEntries([
   { name: 'appLaunch', entryType: 'navigation', startTime: 0, duration: 1200, path: 'pages/index/index' },
   { name: 'firstRender', entryType: 'render', startTime: 200, duration: 400, path: 'pages/index/index' },
   { name: 'firstPaint', entryType: 'render', startTime: 300, duration: 0, path: 'pages/index/index' },
 ]);
 
-// Fire an error through the real error collector.
+// Fire error → produces OTLP log via real error collector
 fireError('TypeError: e2e synthetic error\n    at pages/index/index.js:42:18');
 
 try {

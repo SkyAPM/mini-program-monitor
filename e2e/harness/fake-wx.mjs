@@ -1,10 +1,8 @@
 // Minimal fake `wx` global for running the SDK inside Node.
 //
-// Captures callbacks the SDK registers via wx.onError / onUnhandledRejection
-// / onPageNotFound and wx.getPerformance().createObserver() so the harness
-// can fire them on demand and drive the real collectors end-to-end.
-// wx.request starts as a noop and is replaced by run.mjs with a
-// fetch-backed implementation that forwards HTTP to the real OAP container.
+// Captures callbacks the SDK registers via the platform adapter so the
+// harness can fire them on demand and drive real collectors end-to-end.
+// wx.request is replaced by run.mjs with a fetch-backed implementation.
 
 const noop = () => {};
 
@@ -13,7 +11,7 @@ const rejectionHandlers = [];
 const pageNotFoundHandlers = [];
 const perfObservers = [];
 
-export const fakeWx = {
+globalThis.wx = {
   onError: (cb) => errorHandlers.push(cb),
   onUnhandledRejection: (cb) => rejectionHandlers.push(cb),
   onPageNotFound: (cb) => pageNotFoundHandlers.push(cb),
@@ -33,17 +31,13 @@ export const fakeWx = {
   getPerformance: () => ({
     createObserver: (cb) => {
       perfObservers.push(cb);
-      return {
-        observe: noop,
-        disconnect: noop,
-      };
+      return { observe: noop, disconnect: noop };
     },
     getEntries: () => [],
   }),
   request: noop,
 };
 
-globalThis.wx = fakeWx;
 globalThis.getCurrentPages = () => [{ route: 'pages/index/index' }];
 
 export const fireError = (msg) => errorHandlers.forEach((cb) => cb(msg));

@@ -1,7 +1,0 @@
-- id: {{ b64enc "mini-program-e2e" }}.1
-  name: mini-program-e2e
-  group: ""
-  shortname: mini-program-e2e
-  layers:
-    - BROWSER
-  normal: true

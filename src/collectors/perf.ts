@@ -1,25 +1,9 @@
 import type { RingQueue } from '../core/queue';
 import type { ResolvedOptions } from '../core/options';
-import { getWx } from '../shared/wx';
+import type { PlatformAdapter, PerfEntry, PerfEntryList } from '../adapters/types';
+import type { OtlpMetric, OtlpKeyValue } from '../types/otlp';
 import { warn, debug } from '../shared/log';
 import { now } from '../shared/time';
-import type { BrowserPerfData } from '../vendor/skywalking/protocol';
-
-interface WxPerfEntry {
-  name: string;
-  entryType: string;
-  startTime: number;
-  duration: number;
-  path?: string;
-  referrerPath?: string;
-  navigationType?: string;
-  packageName?: string;
-  packageSize?: number;
-}
-
-interface WxEntryList {
-  getEntries(): WxPerfEntry[];
-}
 
 function currentPagePath(): string {
   try {
@@ -34,64 +18,81 @@ function currentPagePath(): string {
   return 'unknown';
 }
 
-function buildPerfData(
-  entries: WxPerfEntry[],
-  options: ResolvedOptions,
-): BrowserPerfData | null {
-  if (entries.length === 0) return null;
+function toNanos(ms: number): string {
+  return ms + '000000';
+}
 
-  const data: BrowserPerfData = {
-    service: options.service,
-    serviceVersion: options.serviceVersion,
-    pagePath: entries[0]?.path ?? currentPagePath(),
+function pageAttr(pagePath: string): OtlpKeyValue[] {
+  return [{ key: 'miniprogram.page.path', value: { stringValue: pagePath } }];
+}
+
+function gaugeMetric(name: string, valueMs: number, pagePath: string, timeMs: number): OtlpMetric {
+  return {
+    name,
+    unit: 'ms',
+    gauge: {
+      dataPoints: [{
+        asInt: String(Math.floor(valueMs)),
+        timeUnixNano: toNanos(timeMs),
+        attributes: pageAttr(pagePath),
+      }],
+    },
   };
+}
 
+function buildMetrics(entries: PerfEntry[], timeMs: number): OtlpMetric[] {
+  const metrics: OtlpMetric[] = [];
   for (const entry of entries) {
-    const dur = Math.floor(entry.duration ?? 0);
-    const start = Math.floor(entry.startTime ?? 0);
+    if (!entry) continue;
+    const dur = entry.duration ?? 0;
+    const start = entry.startTime ?? 0;
+    const page = entry.path ?? currentPagePath();
 
     switch (entry.entryType) {
       case 'navigation':
         if (entry.name === 'appLaunch') {
-          data.loadPageTime = dur;
+          metrics.push(gaugeMetric('miniprogram.app_launch.duration', dur, page, timeMs));
         } else if (entry.name === 'route') {
-          data.redirectTime = dur;
+          metrics.push(gaugeMetric('miniprogram.route.duration', dur, page, timeMs));
         }
         break;
       case 'render':
         if (entry.name === 'firstRender') {
-          data.fptTime = dur;
-          data.domReadyTime = start + dur;
+          metrics.push(gaugeMetric('miniprogram.first_render.duration', dur, page, timeMs));
         } else if (entry.name === 'firstPaint') {
-          data.fmpTime = start;
-        } else if (entry.name === 'firstContentfulPaint') {
-          data.ttlTime = start;
+          metrics.push(gaugeMetric('miniprogram.first_paint.time', start, page, timeMs));
         }
         break;
       case 'script':
-        data.domAnalysisTime = (data.domAnalysisTime ?? 0) + dur;
+        metrics.push(gaugeMetric('miniprogram.script.duration', dur, page, timeMs));
         break;
       case 'loadPackage':
-        data.resTime = (data.resTime ?? 0) + dur;
+        metrics.push(gaugeMetric('miniprogram.package_load.duration', dur, page, timeMs));
         break;
     }
   }
-
-  return data;
+  return metrics;
 }
 
-export function installPerfCollector(queue: RingQueue, options: ResolvedOptions): void {
-  const wx = getWx();
+export function installPerfCollector(
+  adapter: PlatformAdapter,
+  queue: RingQueue,
+  _options: ResolvedOptions,
+): void {
+  if (!adapter.hasPerformanceObserver || !adapter.getPerformance) {
+    debug('perf collector skipped — platform has no PerformanceObserver');
+    return;
+  }
 
   try {
-    const perf = wx.getPerformance();
-    const observer = perf.createObserver((entryList: WxEntryList) => {
+    const perf = adapter.getPerformance();
+    const observer = perf.createObserver((entryList: PerfEntryList) => {
       try {
         const entries = entryList.getEntries();
-        const perfData = buildPerfData(entries, options);
-        if (perfData) {
-          debug('perf collector', entries.length, 'entries →', perfData);
-          queue.push({ kind: 'perf', time: now(), payload: perfData });
+        const metrics = buildMetrics(entries, Date.now());
+        if (metrics.length > 0) {
+          debug('perf collector', entries.length, 'entries →', metrics.length, 'metrics');
+          queue.push({ kind: 'metric', time: now(), payload: metrics });
         }
       } catch (err) {
         warn('perf collector observer failed', err);

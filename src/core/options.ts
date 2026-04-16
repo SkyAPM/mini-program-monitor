@@ -1,15 +1,14 @@
-import type { MonitorOptions } from '../types/options';
-import type { Exporter } from '../exporters/types';
-import { ConsoleExporter } from '../exporters/console';
-import { SkyWalkingExporter } from '../exporters/skywalking';
+import type { MonitorOptions, EnableFlags, TracingOptions, RequestOptions } from '../types/options';
 
 export interface ResolvedOptions {
   service: string;
   serviceVersion: string;
   serviceInstance: string;
   collector: string;
-  exporter: Exporter;
-  sampleRate: number;
+  platform: 'wechat' | 'alipay';
+  enable: Required<EnableFlags>;
+  tracing: Required<TracingOptions>;
+  request: Required<RequestOptions>;
   maxQueue: number;
   flushInterval: number;
   debug: boolean;
@@ -19,16 +18,25 @@ export function resolveOptions(opts: MonitorOptions): ResolvedOptions {
   if (!opts.service) {
     throw new Error('mini-program-monitor: `service` is required');
   }
-  const collector = opts.collector ?? '';
-  const exporter =
-    opts.exporter ?? (collector ? new SkyWalkingExporter({ collector }) : new ConsoleExporter());
   return {
     service: opts.service,
     serviceVersion: opts.serviceVersion ?? 'v0.0.0',
     serviceInstance: opts.serviceInstance ?? autoInstance(),
-    collector,
-    exporter,
-    sampleRate: opts.sampleRate ?? 1,
+    collector: opts.collector ?? '',
+    platform: opts.platform ?? 'wechat',
+    enable: {
+      error: opts.enable?.error ?? true,
+      perf: opts.enable?.perf ?? true,
+      request: opts.enable?.request ?? true,
+      tracing: opts.enable?.tracing ?? false,
+    },
+    tracing: {
+      sampleRate: opts.tracing?.sampleRate ?? 1,
+      urlBlacklist: opts.tracing?.urlBlacklist ?? [],
+    },
+    request: {
+      urlGroupRules: opts.request?.urlGroupRules ?? {},
+    },
     maxQueue: opts.maxQueue ?? 200,
     flushInterval: opts.flushInterval ?? 5000,
     debug: opts.debug ?? false,

@@ -1,4 +1,4 @@
-export type EventKind = 'error' | 'perf' | 'segment' | 'log';
+export type EventKind = 'error' | 'perf' | 'metric' | 'log' | 'segment';
 
 export interface MonitorEvent {
   kind: EventKind;

@@ -1,8 +1,7 @@
 import { vi, beforeEach } from 'vitest';
-import { resetWxForTests } from '../src/shared/wx';
 
 beforeEach(() => {
-  resetWxForTests();
+  // WeChat-style wx mock (default platform for tests)
   (globalThis as unknown as { wx: unknown }).wx = {
     request: vi.fn(),
     onError: vi.fn(),
@@ -29,4 +28,9 @@ beforeEach(() => {
       getEntries: () => [],
     })),
   };
+  // Alipay-style my mock (not set by default; individual tests add it)
+  delete (globalThis as Record<string, unknown>).my;
+  (globalThis as unknown as { getCurrentPages: () => unknown[] }).getCurrentPages = () => [
+    { route: 'pages/index/index' },
+  ];
 });
