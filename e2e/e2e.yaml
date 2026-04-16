@@ -9,7 +9,7 @@
 setup:
   env: compose
   file: docker-compose.yml
-  timeout: 15m
+  timeout: 5m
   init-system-environment: .env
   steps:
     - name: build SDK
