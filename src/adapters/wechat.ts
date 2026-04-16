@@ -1,10 +1,11 @@
+import { _global } from '../shared/global';
 import type { PlatformAdapter, AdapterRequestOpts, PerfHandle, LifecycleHook } from './types';
 
 function wrapConstructor(
   name: 'App' | 'Page',
   hooks: Record<string, LifecycleHook | undefined>,
 ): void {
-  const g = globalThis as Record<string, unknown>;
+  const g = (_global) as Record<string, unknown>;
   const original = g[name] as (opts: Record<string, unknown>) => void;
   if (typeof original !== 'function') return;
 
@@ -26,7 +27,7 @@ function wrapConstructor(
 }
 
 export function createWechatAdapter(): PlatformAdapter {
-  const g = globalThis as { wx?: WechatMiniprogram.Wx };
+  const g = (_global) as { wx?: WechatMiniprogram.Wx };
   if (!g.wx) throw new Error('mini-program-monitor: wx global not found');
   const wx = g.wx;
 

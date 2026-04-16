@@ -1,3 +1,4 @@
+import { _global } from '../shared/global';
 import type { PlatformAdapter } from './types';
 import { createWechatAdapter } from './wechat';
 import { createAlipayAdapter } from './alipay';
@@ -6,7 +7,7 @@ export function detectPlatform(hint?: 'wechat' | 'alipay'): PlatformAdapter {
   if (hint === 'wechat') return createWechatAdapter();
   if (hint === 'alipay') return createAlipayAdapter();
 
-  const g = globalThis as { wx?: unknown; my?: unknown };
+  const g = (_global) as { wx?: unknown; my?: unknown };
   if (g.wx) return createWechatAdapter();
   if (g.my) return createAlipayAdapter();
 

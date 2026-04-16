@@ -1,3 +1,4 @@
+import { _global } from '../shared/global';
 import type { RingQueue } from '../core/queue';
 import type { ResolvedOptions } from '../core/options';
 import type { PlatformAdapter } from '../adapters/types';
@@ -7,7 +8,7 @@ import { now } from '../shared/time';
 
 function currentPagePath(): string {
   try {
-    const g = globalThis as { getCurrentPages?: () => Array<{ route?: string }> };
+    const g = (_global) as { getCurrentPages?: () => Array<{ route?: string }> };
     const pages = g.getCurrentPages?.();
     if (pages && pages.length > 0) {
       return pages[pages.length - 1]?.route ?? 'unknown';

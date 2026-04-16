@@ -1,4 +1,3 @@
-import './shared/polyfill';
 import type { MonitorOptions } from './types/options';
 import type { MonitorEvent, EventKind } from './types/events';
 import type { PlatformAdapter } from './adapters/types';
