@@ -7,6 +7,6 @@ export default defineConfig({
   clean: true,
   minify: true,
   target: 'es5',
-  sourcemap: true,
+  sourcemap: false,
   treeshake: true,
 });
