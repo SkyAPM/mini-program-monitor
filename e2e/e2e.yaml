@@ -1,9 +1,9 @@
 # skywalking-infra-e2e test case.
 #
 # Orchestration:
-#   setup   — docker compose up OAP+BanyanDB+UI+OTel Collector, build SDK,
-#             run Node harness to emit OTLP metrics + logs, verify output.
-#   verify  — passthrough (verification done in setup steps via check-otlp.mjs).
+#   setup   — docker compose up OTel Collector + mock-collector, build SDK,
+#             run Node harnesses to emit OTLP metrics + logs + traces.
+#   verify  — passthrough (verification done in setup steps).
 #   cleanup — docker compose down, always.
 
 setup:

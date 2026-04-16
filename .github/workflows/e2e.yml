@@ -49,7 +49,6 @@ jobs:
         working-directory: e2e
         run: |
           docker compose ps || true
-          docker compose logs oap || true
           docker compose logs otel-collector || true
           docker compose logs mock-collector || true
 

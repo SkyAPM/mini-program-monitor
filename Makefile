@@ -16,7 +16,9 @@
 
 .PHONY: install build test typecheck lint \
         example-wx example-alipay examples \
-        mock-backend-up mock-backend-down e2e clean
+        mock-backend-up mock-backend-down \
+        oap-up oap-down \
+        e2e clean
 
 # ── Core ──
 
@@ -49,6 +51,12 @@ mock-backend-up:
 
 mock-backend-down:
 	cd e2e && docker compose down
+
+oap-up:
+	cd e2e && docker compose -f docker-compose.yml -f docker-compose.oap.yml up -d
+
+oap-down:
+	cd e2e && docker compose -f docker-compose.yml -f docker-compose.oap.yml down
 
 e2e: build mock-backend-up
 	@echo "=== WeChat OTLP ==="

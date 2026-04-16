@@ -1,0 +1,45 @@
+# Full SkyWalking OAP stack for future integration testing.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.oap.yml up -d
+services:
+  banyandb:
+    image: ghcr.io/apache/skywalking-banyandb:${SW_BANYANDB_COMMIT}
+    command: standalone --measure-metadata-cache-wait-duration 1m --stream-metadata-cache-wait-duration 1m
+    expose:
+      - "17912"
+      - "17913"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "nc -nz 127.0.0.1 17912"]
+      interval: 5s
+      timeout: 60s
+      retries: 60
+    networks: [e2e]
+
+  oap:
+    image: ghcr.io/apache/skywalking/oap:9fda21938fcbf71d77a057105c89d8c1e1d33f5e
+    depends_on:
+      banyandb:
+        condition: service_healthy
+    environment:
+      SW_STORAGE: banyandb
+      SW_STORAGE_BANYANDB_TARGETS: banyandb:17912
+      SW_HEALTH_CHECKER: default
+    ports:
+      - "12800:12800"
+      - "11800:11800"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "cat < /dev/null > /dev/tcp/127.0.0.1/11800"]
+      interval: 5s
+      timeout: 60s
+      retries: 60
+    networks: [e2e]
+
+  ui:
+    image: ghcr.io/apache/skywalking/ui:9fda21938fcbf71d77a057105c89d8c1e1d33f5e
+    depends_on:
+      oap:
+        condition: service_healthy
+    environment:
+      SW_OAP_ADDRESS: http://oap:12800
+    ports:
+      - "8080:8080"
+    networks: [e2e]
