@@ -16,22 +16,17 @@
 # limitations under the License.
 
 # Release script for mini-program-monitor.
-# Usage: ./scripts/release.sh [version]
-# Example: ./scripts/release.sh 0.1.0
+#
+# Reads the current version from package.json, confirms with the user,
+# creates a release commit + tag, then bumps to the next development
+# version.
+#
+# Usage: make release
 
 set -euo pipefail
 
-VERSION="${1:-}"
-if [ -z "$VERSION" ]; then
-  echo "Usage: $0 <version>"
-  echo "Example: $0 0.1.0"
-  exit 1
-fi
-
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-
-echo "=== Releasing v${VERSION} ==="
 
 # 1. Verify clean working tree
 if [ -n "$(git status --porcelain)" ]; then
@@ -46,35 +41,66 @@ if [ "$BRANCH" != "main" ]; then
   exit 1
 fi
 
-# 3. Run tests
+# 3. Read current version from package.json
+CURRENT_VERSION=$(node -p "require('./package.json').version")
+echo "Current version in package.json: ${CURRENT_VERSION}"
+
+# 4. Derive release version (strip -dev, -alpha, -SNAPSHOT suffixes)
+RELEASE_VERSION=$(echo "$CURRENT_VERSION" | sed -E 's/-(dev|alpha|beta|SNAPSHOT|rc)\.[0-9]+$//')
+RELEASE_VERSION=$(echo "$RELEASE_VERSION" | sed -E 's/-(dev|alpha|beta|SNAPSHOT|rc)$//')
+
+echo ""
+read -p "Release version [${RELEASE_VERSION}]: " INPUT_VERSION
+RELEASE_VERSION="${INPUT_VERSION:-$RELEASE_VERSION}"
+
+# 5. Derive next development version (bump minor)
+IFS='.' read -r MAJOR MINOR PATCH <<< "$RELEASE_VERSION"
+NEXT_VERSION="${MAJOR}.$((MINOR + 1)).0-dev"
+
+echo ""
+read -p "Next development version [${NEXT_VERSION}]: " INPUT_NEXT
+NEXT_VERSION="${INPUT_NEXT:-$NEXT_VERSION}"
+
+echo ""
+echo "=== Release plan ==="
+echo "  Release:     ${RELEASE_VERSION}  (tag: v${RELEASE_VERSION})"
+echo "  Next dev:    ${NEXT_VERSION}"
+echo ""
+read -p "Proceed? [y/N]: " CONFIRM
+if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
+  echo "Aborted."
+  exit 0
+fi
+
+# 6. Run tests
+echo ""
 echo "--- typecheck ---"
 make typecheck
 
 echo "--- test ---"
 make test
 
-# 4. Build
+# 7. Build
 echo "--- build ---"
 make build
 
-# 5. Bump version in package.json (no git tag yet)
-npm version "$VERSION" --no-git-tag-version
-
-# 6. Update description to include Alipay
-sed -i '' 's/"description": ".*"/"description": "WeChat and Alipay Mini Program monitoring agent for Apache SkyWalking"/' package.json
-
-# 7. Commit version bump
+# 8. Release commit + tag
+npm version "$RELEASE_VERSION" --no-git-tag-version
 git add package.json package-lock.json
-git commit -m "release: v${VERSION}"
-git tag "v${VERSION}"
+git commit -m "release: v${RELEASE_VERSION}"
+git tag "v${RELEASE_VERSION}"
 
 echo ""
-echo "=== v${VERSION} tagged ==="
+echo "=== Tagged v${RELEASE_VERSION} ==="
+
+# 9. Next development version commit
+npm version "$NEXT_VERSION" --no-git-tag-version
+git add package.json package-lock.json
+git commit -m "build: bump version to ${NEXT_VERSION} for development"
+
+echo ""
+echo "=== Done ==="
 echo ""
 echo "Next steps:"
-echo "  1. git push origin main --follow-tags"
-echo "  2. npm publish --access public"
-echo "  3. Verify: https://www.npmjs.com/package/mini-program-monitor"
-echo ""
-echo "Or dry-run first:"
-echo "  npm publish --access public --dry-run"
+echo "  git push origin main --follow-tags"
+echo "  # GHA will publish v${RELEASE_VERSION} to npm on tag push"

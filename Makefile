@@ -103,8 +103,7 @@ check-traces:
 # ── Release ──
 
 release:
-	@test -n "$(VERSION)" || (echo "Usage: make release VERSION=0.1.0" && exit 1)
-	bash scripts/release.sh $(VERSION)
+	bash scripts/release.sh
 
 # ── Clean ──
 
