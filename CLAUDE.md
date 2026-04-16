@@ -54,9 +54,9 @@ See [DEVELOPER.md](./DEVELOPER.md) for the full dev loop.
 - **M2** — error collector + SkyWalking errorLogs exporter
 - **M3** — perf collector + perfData exporter
 - **M4** — OTLP refactor: platform adapters (wechat/alipay) + OTLP HTTP/JSON exporter + OTel Collector e2e ← *current*
-- **M5** — Alipay perf fallback (lifecycle-based timing) + request metrics collector
-- **M6** — Request metrics: patch wx.request/my.request, emit OTLP metrics (duration/status/size)
+- **M5** — Alipay perf fallback (lifecycle-based timing)
+- **M6** — Request metrics: patch wx.request/my.request, emit OTLP metrics
 - **M7** — Tracing: sw8 injection + SW segment exporter (opt-in)
 - **M8** — Storage-backed queue persistence + onAppHide flush
-- **M9** — Example apps (WeChat + Alipay) + docs polish
+- **M9** — Example apps (WeChat + Alipay) + docs polish ← *next*
 - **M10** — v0.1.0 release

@@ -8,8 +8,9 @@ Monitoring agent for WeChat (微信) and Alipay (支付宝) Mini Programs, repor
 
 - **Error tracking** — JS errors, unhandled promise rejections, page-not-found events. Reported as OTLP logs with OTel semantic conventions (`exception.type`, `exception.stacktrace`).
 - **Performance metrics** — app launch, first render, first paint, route navigation, script execution, sub-package load. Reported as OTLP gauge metrics (`miniprogram.app_launch.duration`, etc.).
-- **Request metrics** *(planned M6)* — `wx.request`/`my.request` duration, status, size by domain. Reported as OTLP metrics.
-- **Distributed tracing** *(planned M7, opt-in)* — `sw8` header propagation across outgoing requests. Reported as SkyWalking `SegmentObject` to `/v3/segments`.
+- **Request metrics** — `wx.request`/`my.request` duration, status by domain. Reported as OTLP metrics. Failed requests (4xx/5xx/timeout) also emit error logs.
+- **Distributed tracing** *(opt-in)* — `sw8` header propagation across outgoing requests. Reported as SkyWalking `SegmentObject` to `/v3/segments`. Requires `enable: { tracing: true }`.
+- **Queue persistence** — unsent events are saved to storage on app hide and restored on next launch.
 
 ## Supported platforms
 

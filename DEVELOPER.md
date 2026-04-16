@@ -140,5 +140,5 @@ The `example/` mini-program for hands-on testing. See [example/README.md](exampl
 - **M6** — Request metrics: patch wx.request/my.request, emit OTLP metrics
 - **M7** — Tracing: sw8 injection + SW segment exporter (opt-in)
 - **M8** — Storage-backed queue persistence + onAppHide flush
-- **M9** — Example apps (WeChat + Alipay) + docs polish
+- **M9** — Example apps (WeChat + Alipay) + docs polish ← *next*
 - **M10** — v0.1.0 release
