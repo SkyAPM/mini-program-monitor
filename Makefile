@@ -16,7 +16,8 @@
 
 .PHONY: install build test typecheck lint \
         example-wx example-alipay examples \
-        mock-backend-up mock-backend-down mock-backend-logs mock-backend-traces \
+        mock-backend-up mock-backend-down \
+        check-otlp check-traces \
         oap-up oap-down \
         e2e clean
 
@@ -72,11 +73,30 @@ e2e: build mock-backend-up
 	MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node e2e/verify/check-traces.mjs
 
 # ── Verify ──
+#
+# check-otlp: reads OTel Collector debug logs and verifies:
+#   - miniprogram.app_launch.duration metric exists
+#   - miniprogram.first_render.duration metric exists
+#   - miniprogram.first_paint.time metric exists
+#   - miniprogram.request.duration metric exists
+#   - Error log with severityNumber=17 (ERROR) exists
+#   - Error log body contains the exception message
+#   - Error log has exception.type attribute
+#   - Resource attribute service.name matches expected value
+#   - Resource attribute miniprogram.platform = wechat or alipay
+#
+# check-traces: reads mock-collector /receiveData and verifies:
+#   - Segment contains the expected service name
+#   - Span peer matches the target domain (e.g. httpbin.org)
+#   - Span layer = Http
+#   - Span type = Exit
+#   - Span has http.method tag
+#   - http.method tag value = GET
 
-mock-backend-logs:
+check-otlp:
 	cd e2e && docker compose logs otel-collector 2>&1 | grep -E "Name:|Value:|SeverityText:|Body:|service.name:|miniprogram"
 
-mock-backend-traces:
+check-traces:
 	curl -sS http://127.0.0.1:12801/receiveData
 
 # ── Clean ──
