@@ -1,84 +1,48 @@
-# Layer B — end-to-end harness
+# E2E testing
 
-A headless, dockerized end-to-end test that runs the compiled SDK in Node against a real Apache SkyWalking OAP + UI + BanyanDB stack, then asserts the data landed via `swctl` GraphQL queries.
+End-to-end tests that run the compiled SDK in Node against real backend containers, verifying both WeChat and Alipay platforms.
 
-Layer A is [`example/`](../example/) — the manual-in-WeChat-Devtools version.
-Layer B is this directory — the automated version that does not need the WeChat simulator.
+## Containers
 
-## How it works
+| Container | Image | Port | Purpose |
+|---|---|---|---|
+| `otel-collector` | `otel/opentelemetry-collector-contrib` | 4318 | Receives OTLP metrics + logs, debug output for verification |
+| `mock-collector` | `ghcr.io/apache/skywalking-agent-test-tool/mock-collector` | 12801 | Receives `/v3/segments`, exposes `/receiveData` YAML for trace validation |
+| `oap` | `ghcr.io/apache/skywalking/oap` | 12800 | Kept for future OAP OTLP HTTP integration |
+| `banyandb` | `ghcr.io/apache/skywalking-banyandb` | — | Storage for OAP |
+| `ui` | `ghcr.io/apache/skywalking/ui` | 8080 | SkyWalking dashboard |
 
-```
-Node process                        docker compose
-┌─────────────────────┐             ┌────────────────────────┐
-│  harness/run.mjs    │  POST       │  oap  (latest master)  │
-│   ├─ fake-wx.mjs    │ ─────────►  │  browser receiver      │
-│   ├─ SDK (init)     │             │  │                     │
-│   └─ HarnessExporter│             │  ▼                     │
-└─────────────────────┘             │  banyandb (commit-pin) │
-         ▲                          └──┬─────────────────────┘
-         │                             │
-         │   swctl browser logs ls     ▼
-         └───────────────────────── GraphQL ports 12800
-```
+## Harnesses
 
-The SDK runs unmodified — imported from `../dist/index.mjs` after a normal `npm run build`. The harness replaces `globalThis.wx` with a minimal stub and passes a custom `Exporter` implementation that POSTs `BrowserErrorLog[]` to OAP's `/browser/errorLogs` endpoint.
+| Harness | Platform | What it tests |
+|---|---|---|
+| `run.mjs` | WeChat | Error logs + perf metrics + request metrics via OTLP |
+| `run-alipay.mjs` | Alipay | Error logs + request metrics via OTLP (lifecycle perf, no getPerformance) |
+| `run-tracing.mjs` | WeChat | sw8 header injection + SegmentObject to mock-collector |
 
-The custom exporter is a temporary stand-in. When M2 lands the real vendored SkyWalking exporter under `src/vendor/skywalking/`, [`harness/exporter.mjs`](harness/exporter.mjs) deletes and the harness imports the production one.
+## Verification
 
-## Image pinning
-
-- **OAP** — `skywalking/oap:latest` (Docker Hub). Upstream CI auto-builds this from master; upstream's own e2e uses the same reference.
-- **UI** — `skywalking/ui:latest` (same).
-- **BanyanDB** — `ghcr.io/apache/skywalking-banyandb:<commit>` pinned in [.env](.env). Mirrored from `apache/skywalking test/e2e-v2/script/env`. Bump when upstream bumps.
-- **swctl** — release-pinned in [scripts/install-swctl.sh](scripts/install-swctl.sh).
+| Script | Checks | Against |
+|---|---|---|
+| `check-otlp.mjs` | 13 checks | OTel Collector debug logs |
+| `check-traces.mjs` | 6 checks | mock-collector `/receiveData` YAML |
 
 ## Running locally
 
-You need Docker, Node ≥ 18, Go ≥ 1.22, and the [`skywalking-infra-e2e` CLI](https://github.com/apache/skywalking-infra-e2e):
-
 ```bash
-go install github.com/apache/skywalking-infra-e2e/cmd/e2e@latest
-```
-
-First-time setup in the repo root:
-
-```bash
-npm ci        # from the repo root — e2e.yaml's setup step will `npm run build`
-```
-
-Then:
-
-```bash
+npm ci        # from repo root
 cd e2e
-e2e run -c e2e.yaml
-```
-
-This executes setup → verify → cleanup in one shot. On success you should see the two `verify` cases pass. On failure the compose logs are preserved under the case directory.
-
-## CI
-
-This harness runs on every push and PR to `main`, plus nightly at 05:00 UTC, via [`.github/workflows/e2e.yml`](../.github/workflows/e2e.yml). The workflow installs `skywalking-infra-e2e` via `go install`, then executes the same `e2e run -c e2e.yaml` command you'd run locally.
-
-### Running pieces by hand (debug)
-
-```bash
-cd e2e
-docker compose up -d                 # bring up oap/ui/banyandb
-bash scripts/install-swctl.sh        # populate ./bin/swctl
-(cd .. && npm run build)             # make dist/ for the harness
-node harness/run.mjs                 # emit one synthetic error
-
-# wait a few seconds for OAP to index, then:
-./bin/swctl --display yaml --base-url http://127.0.0.1:12800/graphql browser service ls
-./bin/swctl --display yaml --base-url http://127.0.0.1:12800/graphql browser logs ls --service-name mini-program-e2e
-
-# visit http://localhost:8080 for the SkyWalking UI
-
+docker compose up -d
+(cd .. && npm run build)
+node harness/run.mjs
+node harness/run-alipay.mjs
+node harness/run-tracing.mjs
+sleep 5
+COMPOSE_DIR=. node verify/check-otlp.mjs
+MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node verify/check-traces.mjs
 docker compose down
 ```
 
-## Milestone status
+## CI
 
-- **M1 (now)** — infrastructure + harness skeleton + one synthetic error path. The SDK's own exporters don't produce BrowserErrorLog JSON yet, so the harness temporarily does the translation.
-- **M2** — replace `harness/exporter.mjs` with the real `SkyWalkingExporter` from `src/vendor/skywalking/`. Harness just calls `record('error', …)` (or later, triggers the actual collector's `wx.onError` callback) and lets the SDK do the work.
-- **M3–M4** — extend the harness with perf + segment paths, add more verify cases.
+Runs via [`.github/workflows/e2e.yml`](../.github/workflows/e2e.yml) on every push and PR to `main`, plus nightly. Uses `skywalking-infra-e2e` CLI to orchestrate setup → verify → cleanup.

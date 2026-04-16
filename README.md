@@ -8,8 +8,8 @@ Monitoring agent for WeChat (微信) and Alipay (支付宝) Mini Programs, repor
 
 - **Error tracking** — JS errors, unhandled promise rejections, page-not-found events. Reported as OTLP logs with OTel semantic conventions (`exception.type`, `exception.stacktrace`).
 - **Performance metrics** — app launch, first render, first paint, route navigation, script execution, sub-package load. Reported as OTLP gauge metrics (`miniprogram.app_launch.duration`, etc.).
-- **Request metrics** — `wx.request`/`my.request` duration, status by domain. Reported as OTLP metrics. Failed requests (4xx/5xx/timeout) also emit error logs.
-- **Distributed tracing** *(opt-in)* — `sw8` header propagation across outgoing requests. Reported as SkyWalking `SegmentObject` to `/v3/segments`. Requires `enable: { tracing: true }`.
+- **Request metrics** — `wx.request`/`my.request` duration and status by domain. Failed requests (4xx/5xx/timeout) also emit error logs with `exception.type: ajax`.
+- **Distributed tracing** *(opt-in)* — `sw8` header propagation across outgoing requests. Reported as SkyWalking `SegmentObject` to `/v3/segments`. Enable with `enable: { tracing: true }`.
 - **Queue persistence** — unsent events are saved to storage on app hide and restored on next launch.
 
 ## Supported platforms
@@ -17,7 +17,7 @@ Monitoring agent for WeChat (微信) and Alipay (支付宝) Mini Programs, repor
 | Platform | Global | Error hooks | Perf API | Status |
 |---|---|---|---|---|
 | **WeChat** (微信) | `wx.*` | `wx.onError`, `wx.onUnhandledRejection`, `wx.onPageNotFound` | `wx.getPerformance()` + PerformanceObserver | Implemented |
-| **Alipay** (支付宝) | `my.*` | `my.onError`, `my.onUnhandledRejection` | Lifecycle-based fallback (no `my.getPerformance`) | Adapter ready, perf fallback planned M5 |
+| **Alipay** (支付宝) | `my.*` | `my.onError`, `my.onUnhandledRejection` | Lifecycle-based fallback (`App.onLaunch→onShow`, `Page.onLoad→onReady`) | Implemented |
 
 ## Install
 
@@ -75,14 +75,21 @@ init({
   enable: {
     error: true,       // default true  — error logs via OTLP
     perf: true,        // default true  — perf metrics via OTLP
-    request: true,     // default true  — request metrics via OTLP (planned)
-    tracing: false,    // default false — sw8 header injection + trace segments (planned)
+    request: true,     // default true  — request metrics via OTLP
+    tracing: false,    // default false — sw8 header injection + trace segments
   },
 
   // Tracing options (when enable.tracing = true)
   tracing: {
     sampleRate: 1.0,
     urlBlacklist: [/\/heartbeat/],
+  },
+
+  // Request options
+  request: {
+    urlGroupRules: {                 // cardinality control for metric labels
+      '/api/users/*': /\/api\/users\/\d+/,
+    },
   },
 
   // Transport
@@ -96,8 +103,8 @@ init({
 ## Data flow
 
 ```
-Mini-program SDK              Apache SkyWalking OAP
-────────────────              ─────────────────────
+Mini-program SDK              Backend (Apache SkyWalking OAP)
+────────────────              ─────────────────────────────
 Error logs     ──→ OTLP JSON ──→ POST /v1/logs     ──→ LAL rules ──→ Log storage
 Perf metrics   ──→ OTLP JSON ──→ POST /v1/metrics  ──→ MAL rules ──→ Metric storage
 Request metrics ──→ OTLP JSON ──→ POST /v1/metrics  ──→ MAL rules ──→ Metric storage

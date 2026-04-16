@@ -24,14 +24,15 @@ src/
   index.ts            public API: init, record, flush, shutdown
   core/               options, queue, scheduler, sampler, resource builder
   adapters/           platform abstraction (wechat.ts, alipay.ts, detect.ts)
-  collectors/         error (OTLP logs), perf (OTLP metrics), request (planned), tracing (planned)
-  exporters/          otlp-http (JSON), console, sw-trace (planned)
-  shared/             log, time helpers
-  vendor/skywalking/  uuid.ts, constant.ts (for future segment ID generation)
-  types/              options, events, OTLP wire types
+  collectors/         error (OTLP logs), perf (OTLP metrics), request (OTLP metrics + sw8 tracing)
+  exporters/          otlp-http (JSON), sw-trace (/v3/segments), composite, console
+  shared/             log, time, base64 helpers
+  vendor/skywalking/  uuid.ts, constant.ts (for segment ID generation)
+  types/              options, events, OTLP wire types, segment types
 test/                 vitest unit tests with wx/my mocks
 example/              WeChat mini-program for manual testing
-e2e/                  docker-compose (OAP + BanyanDB + OTel Collector) + harness + verify
+example-alipay/       Alipay mini-program for manual testing
+e2e/                  docker-compose (OTel Collector + mock-collector + OAP) + harnesses + verify
 ```
 
 ## Out of scope for v0.1
@@ -42,21 +43,19 @@ e2e/                  docker-compose (OAP + BanyanDB + OTel Collector) + harness
 
 ## Testing layers
 
-- **Unit (CI):** vitest + platform mocks in `test/setup.ts`. Runs in plain Node.
-- **E2E (CI):** OTel Collector receives OTLP metrics+logs from the harness, verify script checks collector debug output. OAP + BanyanDB for future trace verification.
-- **Manual (local):** `example/` mini-program in WeChat Developer Tools.
+- **Unit (CI):** vitest + platform mocks in `test/setup.ts`. 73 tests across 15 files.
+- **E2E (CI):** OTel Collector for OTLP verification (13 checks), mock-collector for trace segment verification (6 checks). Both WeChat + Alipay platforms tested.
+- **Manual (local):** `example/` (WeChat) and `example-alipay/` (Alipay) in their respective DevTools.
 
 See [DEVELOPER.md](./DEVELOPER.md) for the full dev loop.
 
 ## Roadmap
 
-- **M1** — skeleton: options, queue, scheduler, console exporter, unit tests
-- **M2** — error collector + SkyWalking errorLogs exporter
-- **M3** — perf collector + perfData exporter
-- **M4** — OTLP refactor: platform adapters (wechat/alipay) + OTLP HTTP/JSON exporter + OTel Collector e2e ← *current*
+- **M1–M3** — skeleton, error collector, perf collector (browser protocol, since replaced)
+- **M4** — OTLP refactor: platform adapters + OTLP HTTP/JSON exporter + OTel Collector e2e
 - **M5** — Alipay perf fallback (lifecycle-based timing)
-- **M6** — Request metrics: patch wx.request/my.request, emit OTLP metrics
-- **M7** — Tracing: sw8 injection + SW segment exporter (opt-in)
+- **M6** — Request metrics collector (always-on, domain-level)
+- **M7** — Distributed tracing: sw8 injection + SW segment exporter (opt-in)
 - **M8** — Storage-backed queue persistence + onAppHide flush
-- **M9** — Example apps (WeChat + Alipay) + docs polish ← *next*
-- **M10** — v0.1.0 release
+- **M9** — Example apps (WeChat + Alipay) + Alipay e2e + trace validation via mock-collector
+- **M10** — v0.1.0 release ← *next*
