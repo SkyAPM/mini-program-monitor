@@ -57,7 +57,7 @@ The example app sends:
 | Throw JS error | `wx.onError` fires → OTLP error log |
 | Reject promise | `wx.onUnhandledRejection` fires → OTLP error log |
 | Record error (manual) | `record('log', ...)` + `flush()` → OTLP error log |
-| Navigate to unknown route | `wx.onPageNotFound` fires → OTLP error log |
+| Navigate to unknown route (entry-only) | Demonstrates `wx.onPageNotFound` limitation — only fires for entry-point navigation (QR code / deep link), not programmatic `wx.navigateTo` |
 | wx.request | Request to httpbin.org → OTLP request metric + trace segment |
 | Flush now | Drains the queue immediately |
 

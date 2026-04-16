@@ -26,9 +26,12 @@ Page({
   },
 
   onUnknownRoute() {
+    // wx.onPageNotFound only fires for entry-point navigation (e.g. scanning
+    // a QR code to a missing page), NOT for programmatic wx.navigateTo.
+    // This button demonstrates that limitation — no OTLP log is emitted.
     wx.navigateTo({
       url: '/pages/does-not-exist/index',
-      fail: (e) => console.log('[demo] navigate failed as expected:', e.errMsg),
+      fail: (e) => console.log('[demo] navigate failed (onPageNotFound does NOT fire for programmatic navigation):', e.errMsg),
     });
   },
 

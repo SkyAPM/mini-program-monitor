@@ -5,7 +5,7 @@
   <button bindtap="onThrowError">Throw JS error</button>
   <button bindtap="onRejectPromise">Reject promise</button>
   <button bindtap="onRecordError">Record error (manual)</button>
-  <button bindtap="onUnknownRoute">Navigate to unknown route</button>
+  <button bindtap="onUnknownRoute">Navigate to unknown route (entry-only)</button>
   <button bindtap="onRequest">wx.request</button>
   <button bindtap="onFlush">Flush now</button>
 </view>
