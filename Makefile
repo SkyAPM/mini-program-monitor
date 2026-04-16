@@ -94,10 +94,10 @@ e2e: build mock-backend-up
 #   - http.method tag value = GET
 
 check-otlp:
-	cd e2e && docker compose logs otel-collector 2>&1 | grep -E "Name:|Value:|SeverityText:|Body:|service.name:|miniprogram"
+	@cd e2e && docker compose logs otel-collector 2>&1 | grep -E "Name:|Value:|SeverityText:|Body:|service.name:|miniprogram" || echo "(no OTLP data yet — click buttons in the example app first)"
 
 check-traces:
-	curl -sS http://127.0.0.1:12801/receiveData
+	@curl -sS http://127.0.0.1:12801/receiveData || echo "(mock-collector not reachable — run 'make mock-backend-up' first)"
 
 # ── Clean ──
 
