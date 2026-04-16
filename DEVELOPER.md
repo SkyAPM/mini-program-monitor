@@ -6,7 +6,7 @@ Internal docs for working on `mini-program-monitor`.
 
 - Node.js ≥ 18
 - Docker + Docker Compose — for e2e tests
-- WeChat Developer Tools — for `example/` app. Download: <https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html>
+- WeChat Developer Tools — for `example-wx/` app. Download: <https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html>
 - Alipay Developer Tools — for `example-alipay/` app. Download: <https://opendocs.alipay.com/mini/ide/download>
 
 ## First-time setup
@@ -32,7 +32,7 @@ src/
   vendor/skywalking/  uuid.ts, constant.ts (vendored from skywalking-client-js)
   types/              options, events, OTLP JSON wire types, SW segment types
 test/                 vitest unit tests with wx/my mocks (73 tests, 15 files)
-example/              WeChat mini-program for manual testing
+example-wx/              WeChat mini-program for manual testing
 example-alipay/       Alipay mini-program for manual testing
 e2e/                  docker-compose + harnesses + verify scripts
 ```
@@ -122,7 +122,7 @@ docker compose down
 
 ### Layer 3 — manual in WeChat/Alipay simulator
 
-- `example/` — WeChat, see [example/README.md](example/README.md)
+- `example-wx/` — WeChat, see [example-wx/README.md](example-wx/README.md)
 - `example-alipay/` — Alipay, see [example-alipay/README.md](example-alipay/README.md)
 
 ## Adding a collector

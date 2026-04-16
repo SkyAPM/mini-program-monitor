@@ -30,7 +30,7 @@ src/
   vendor/skywalking/  uuid.ts, constant.ts (for segment ID generation)
   types/              options, events, OTLP wire types, segment types
 test/                 vitest unit tests with wx/my mocks
-example/              WeChat mini-program for manual testing
+example-wx/              WeChat mini-program for manual testing
 example-alipay/       Alipay mini-program for manual testing
 e2e/                  docker-compose (OTel Collector + mock-collector + OAP) + harnesses + verify
 ```
@@ -45,7 +45,7 @@ e2e/                  docker-compose (OTel Collector + mock-collector + OAP) + h
 
 - **Unit (CI):** vitest + platform mocks in `test/setup.ts`. 73 tests across 15 files.
 - **E2E (CI):** OTel Collector for OTLP verification (13 checks), mock-collector for trace segment verification (6 checks). Both WeChat + Alipay platforms tested.
-- **Manual (local):** `example/` (WeChat) and `example-alipay/` (Alipay) in their respective DevTools.
+- **Manual (local):** `example-wx/` (WeChat) and `example-alipay/` (Alipay) in their respective DevTools.
 
 See [DEVELOPER.md](./DEVELOPER.md) for the full dev loop.
 
