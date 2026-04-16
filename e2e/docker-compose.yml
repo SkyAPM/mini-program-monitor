@@ -10,13 +10,5 @@ services:
       retries: 10
     networks: [e2e]
 
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
-    volumes:
-      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
-    ports:
-      - "4318:4318"
-    networks: [e2e]
-
 networks:
   e2e:

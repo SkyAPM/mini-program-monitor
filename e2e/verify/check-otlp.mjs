@@ -10,7 +10,7 @@ const COMPOSE_DIR = process.env.COMPOSE_DIR ?? '.';
 
 let logs;
 try {
-  logs = execSync(`docker compose -f ${COMPOSE_DIR}/docker-compose.yml logs otel-collector 2>&1`, {
+  logs = execSync(`docker logs otel-collector 2>&1`, {
     encoding: 'utf-8',
     timeout: 10_000,
   });

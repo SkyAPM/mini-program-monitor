@@ -50,8 +50,11 @@ examples: example-wx example-alipay
 
 mock-backend-up:
 	cd e2e && docker compose up -d
+	docker rm -f otel-collector 2>/dev/null || true
+	docker run -d --name otel-collector -p 4318:4318 -v $(shell pwd)/e2e/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml otel/opentelemetry-collector-contrib:latest
 
 mock-backend-down:
+	docker rm -f otel-collector 2>/dev/null || true
 	cd e2e && docker compose down
 
 oap-up:
@@ -95,7 +98,7 @@ e2e: build mock-backend-up
 #   - http.method tag value = GET
 
 check-otlp:
-	@cd e2e && docker compose logs otel-collector 2>&1 | grep -E "Name:|Value:|SeverityText:|Body:|service.name:|miniprogram" || echo "(no OTLP data yet — click buttons in the example app first)"
+	@docker logs otel-collector 2>&1 | grep -E "Name:|Value:|SeverityText:|Body:|service.name:|miniprogram" || echo "(no OTLP data yet — click buttons in the example app first)"
 
 check-traces:
 	@curl -sS http://127.0.0.1:12801/receiveData || echo "(mock-collector not reachable — run 'make mock-backend-up' first)"
