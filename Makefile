@@ -16,7 +16,7 @@
 
 .PHONY: install build test typecheck lint \
         example-wx example-alipay examples \
-        e2e e2e-up e2e-down clean
+        mock-backend-up mock-backend-down e2e clean
 
 # ── Core ──
 
@@ -44,13 +44,13 @@ examples: example-wx example-alipay
 
 # ── E2E ──
 
-e2e-up:
+mock-backend-up:
 	cd e2e && docker compose up -d
 
-e2e-down:
+mock-backend-down:
 	cd e2e && docker compose down
 
-e2e: build e2e-up
+e2e: build mock-backend-up
 	@echo "=== WeChat OTLP ==="
 	node e2e/harness/run.mjs
 	@echo "=== Alipay OTLP ==="
