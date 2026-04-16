@@ -19,7 +19,7 @@
         mock-backend-up mock-backend-down \
         check-otlp check-traces \
         oap-up oap-down \
-        e2e clean
+        e2e release clean
 
 # ── Core ──
 
@@ -99,6 +99,12 @@ check-otlp:
 
 check-traces:
 	@curl -sS http://127.0.0.1:12801/receiveData || echo "(mock-collector not reachable — run 'make mock-backend-up' first)"
+
+# ── Release ──
+
+release:
+	@test -n "$(VERSION)" || (echo "Usage: make release VERSION=0.1.0" && exit 1)
+	bash scripts/release.sh $(VERSION)
 
 # ── Clean ──
 
