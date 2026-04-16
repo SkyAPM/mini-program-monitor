@@ -1,4 +1,29 @@
-import type { PlatformAdapter, AdapterRequestOpts, PerfHandle } from './types';
+import type { PlatformAdapter, AdapterRequestOpts, PerfHandle, LifecycleHook } from './types';
+
+function wrapConstructor(
+  name: 'App' | 'Page',
+  hooks: Record<string, LifecycleHook | undefined>,
+): void {
+  const g = globalThis as Record<string, unknown>;
+  const original = g[name] as (opts: Record<string, unknown>) => void;
+  if (typeof original !== 'function') return;
+
+  g[name] = (opts: Record<string, unknown>) => {
+    for (const [key, hook] of Object.entries(hooks)) {
+      if (!hook) continue;
+      const userFn = opts[key] as ((...args: unknown[]) => void) | undefined;
+      opts[key] = function (this: unknown, ...args: unknown[]) {
+        try {
+          hook.call(this, ...args);
+        } catch {
+          // lifecycle hook must never crash
+        }
+        if (userFn) return userFn.call(this, ...args);
+      };
+    }
+    return original(opts);
+  };
+}
 
 export function createWechatAdapter(): PlatformAdapter {
   const g = globalThis as { wx?: WechatMiniprogram.Wx };
@@ -30,6 +55,9 @@ export function createWechatAdapter(): PlatformAdapter {
 
     hasPerformanceObserver: true,
     getPerformance: () => wx.getPerformance() as unknown as PerfHandle,
+
+    wrapApp: (hooks) => wrapConstructor('App', hooks),
+    wrapPage: (hooks) => wrapConstructor('Page', hooks),
 
     getSystemInfoSync: () => {
       const info = wx.getSystemInfoSync();

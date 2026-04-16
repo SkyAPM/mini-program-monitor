@@ -40,7 +40,15 @@ function gaugeMetric(name: string, valueMs: number, pagePath: string, timeMs: nu
   };
 }
 
-function buildMetrics(entries: PerfEntry[], timeMs: number): OtlpMetric[] {
+function pushMetrics(queue: RingQueue, metrics: OtlpMetric[]): void {
+  if (metrics.length > 0) {
+    queue.push({ kind: 'metric', time: now(), payload: metrics });
+  }
+}
+
+// ── Observer-based path (WeChat) ──
+
+function buildMetricsFromEntries(entries: PerfEntry[], timeMs: number): OtlpMetric[] {
   const metrics: OtlpMetric[] = [];
   for (const entry of entries) {
     if (!entry) continue;
@@ -74,32 +82,84 @@ function buildMetrics(entries: PerfEntry[], timeMs: number): OtlpMetric[] {
   return metrics;
 }
 
+function installObserverPerf(adapter: PlatformAdapter, queue: RingQueue): void {
+  const perf = adapter.getPerformance!();
+  const observer = perf.createObserver((entryList: PerfEntryList) => {
+    try {
+      const entries = entryList.getEntries();
+      const metrics = buildMetricsFromEntries(entries, Date.now());
+      if (metrics.length > 0) {
+        debug('perf collector', entries.length, 'entries →', metrics.length, 'metrics');
+        pushMetrics(queue, metrics);
+      }
+    } catch (err) {
+      warn('perf collector observer failed', err);
+    }
+  });
+  observer.observe({ entryTypes: ['navigation', 'render', 'script', 'loadPackage'] });
+  debug('perf collector installed (observer)');
+}
+
+// ── Lifecycle-based path (Alipay / fallback) ──
+
+function installLifecyclePerf(adapter: PlatformAdapter, queue: RingQueue): void {
+  let appLaunchStart = 0;
+  let pageLoadStarts: Record<string, number> = {};
+
+  if (adapter.wrapApp) {
+    adapter.wrapApp({
+      onLaunch() {
+        appLaunchStart = Date.now();
+      },
+      onShow() {
+        if (appLaunchStart > 0) {
+          const duration = Date.now() - appLaunchStart;
+          const page = currentPagePath();
+          pushMetrics(queue, [gaugeMetric('miniprogram.app_launch.duration', duration, page, Date.now())]);
+          appLaunchStart = 0;
+        }
+      },
+    });
+  }
+
+  if (adapter.wrapPage) {
+    adapter.wrapPage({
+      onLoad() {
+        const page = currentPagePath();
+        pageLoadStarts[page] = Date.now();
+      },
+      onReady() {
+        const page = currentPagePath();
+        const start = pageLoadStarts[page];
+        if (start) {
+          const duration = Date.now() - start;
+          pushMetrics(queue, [gaugeMetric('miniprogram.first_render.duration', duration, page, Date.now())]);
+          delete pageLoadStarts[page];
+        }
+      },
+      onHide() {
+        const page = currentPagePath();
+        delete pageLoadStarts[page];
+      },
+    });
+  }
+
+  debug('perf collector installed (lifecycle)');
+}
+
+// ── Entry point ──
+
 export function installPerfCollector(
   adapter: PlatformAdapter,
   queue: RingQueue,
   _options: ResolvedOptions,
 ): void {
-  if (!adapter.hasPerformanceObserver || !adapter.getPerformance) {
-    debug('perf collector skipped — platform has no PerformanceObserver');
-    return;
-  }
-
   try {
-    const perf = adapter.getPerformance();
-    const observer = perf.createObserver((entryList: PerfEntryList) => {
-      try {
-        const entries = entryList.getEntries();
-        const metrics = buildMetrics(entries, Date.now());
-        if (metrics.length > 0) {
-          debug('perf collector', entries.length, 'entries →', metrics.length, 'metrics');
-          queue.push({ kind: 'metric', time: now(), payload: metrics });
-        }
-      } catch (err) {
-        warn('perf collector observer failed', err);
-      }
-    });
-    observer.observe({ entryTypes: ['navigation', 'render', 'script', 'loadPackage'] });
-    debug('perf collector installed');
+    if (adapter.hasPerformanceObserver && adapter.getPerformance) {
+      installObserverPerf(adapter, queue);
+    } else {
+      installLifecyclePerf(adapter, queue);
+    }
   } catch (err) {
     warn('perf collector install failed', err);
   }

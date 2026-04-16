@@ -33,6 +33,8 @@ export interface PerfHandle {
   getEntries(): PerfEntry[];
 }
 
+export type LifecycleHook = (...args: unknown[]) => void;
+
 export interface PlatformAdapter {
   readonly name: 'wechat' | 'alipay';
 
@@ -47,6 +49,18 @@ export interface PlatformAdapter {
 
   hasPerformanceObserver: boolean;
   getPerformance?(): PerfHandle;
+
+  wrapApp?(hooks: {
+    onLaunch?: LifecycleHook;
+    onShow?: LifecycleHook;
+  }): void;
+
+  wrapPage?(hooks: {
+    onLoad?: LifecycleHook;
+    onReady?: LifecycleHook;
+    onShow?: LifecycleHook;
+    onHide?: LifecycleHook;
+  }): void;
 
   getSystemInfoSync(): { brand: string; model: string; SDKVersion: string; platform: string; system: string };
 
