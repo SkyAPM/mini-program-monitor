@@ -16,11 +16,6 @@ services:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
     ports:
       - "4318:4318"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:13133"]
-      interval: 5s
-      timeout: 10s
-      retries: 10
     networks: [e2e]
 
 networks:
