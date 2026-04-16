@@ -51,22 +51,15 @@ interface AlipayMy {
   getStorageSync(opts: { key: string }): { data: string };
 }
 
-// Alipay injects `my` as a module-scope variable, not always on the
-// global object. Try both paths.
-function findMy(): AlipayMy {
-  const g = _global as { my?: AlipayMy };
-  if (g.my) return g.my;
-  try {
-    // `my` may be a free variable in module scope
-    return new Function('return typeof my !== "undefined" ? my : undefined')() as AlipayMy;
-  } catch {
-    // ignored
-  }
-  throw new Error('mini-program-monitor: my global not found');
-}
+// Alipay injects `my` into each module's scope. Declare it so TS
+// doesn't complain, and reference it directly (not via Function()
+// which runs in a clean scope without module-injected variables).
+declare const my: AlipayMy | undefined;
 
 export function createAlipayAdapter(): PlatformAdapter {
-  const my = findMy();
+  if (typeof my === 'undefined') {
+    throw new Error('mini-program-monitor: my global not found');
+  }
 
   return {
     name: 'alipay',
