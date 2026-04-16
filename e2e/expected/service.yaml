@@ -2,6 +2,6 @@
   name: mini-program-e2e
   group: ""
   shortname: mini-program-e2e
-  normal: true
   layers:
     - BROWSER
+  normal: true

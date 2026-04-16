@@ -1,10 +1,10 @@
 logs:
 {{- contains .logs }}
 - service: mini-program-e2e
-  serviceversion: {{ notEmpty .serviceversion }}
+  serviceversion: v0.1.0-alpha.0
   time: {{ gt .time 0 }}
   pagepath: pages/index/index
-  category: js
+  category: JS
   grade: Error
   message: {{ notEmpty .message }}
   line: 0
@@ -13,4 +13,3 @@ logs:
   errorurl: pages/index/index
   firstreportederror: {{ .firstreportederror }}
 {{- end }}
-total: {{ gt .total 0 }}
