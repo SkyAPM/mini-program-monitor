@@ -13,9 +13,11 @@ setup:
   init-system-environment: .env
   steps:
     - name: start otel-collector
-      command: docker run -d --name otel-collector -p 4318:4318 -v $(pwd)/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml otel/opentelemetry-collector-contrib:latest
+      command: |
+        docker run -d --name otel-collector -p 4318:4318 -v $(pwd)/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml otel/opentelemetry-collector-contrib:latest
     - name: wait for otel-collector
-      command: bash -c 'for i in $(seq 1 30); do curl -sS -o /dev/null http://127.0.0.1:4318/v1/metrics -X POST -d "{}" -H "Content-Type: application/json" 2>/dev/null && exit 0; sleep 1; done; exit 1'
+      command: |
+        bash -c 'for i in $(seq 1 30); do curl -sS -o /dev/null http://127.0.0.1:4318/v1/metrics -X POST -d "{}" -H "Content-Type: application/json" 2>/dev/null && exit 0; sleep 1; done; exit 1'
     - name: build SDK
       command: bash -c "cd .. && npm run build"
     - name: emit WeChat test events
