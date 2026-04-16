@@ -27,6 +27,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@swc/core": "^1.15.26",
     "@types/wechat-miniprogram": "^3.4.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
