@@ -16,7 +16,7 @@
 
 .PHONY: install build test typecheck lint \
         example-wx example-alipay examples \
-        mock-backend-up mock-backend-down \
+        mock-backend-up mock-backend-down mock-backend-logs mock-backend-traces \
         oap-up oap-down \
         e2e clean
 
@@ -70,6 +70,14 @@ e2e: build mock-backend-up
 	COMPOSE_DIR=e2e node e2e/verify/check-otlp.mjs
 	@echo "=== Verify Traces ==="
 	MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node e2e/verify/check-traces.mjs
+
+# ── Verify ──
+
+mock-backend-logs:
+	cd e2e && docker compose logs otel-collector 2>&1 | grep -E "Name:|Value:|SeverityText:|Body:|service.name:|miniprogram"
+
+mock-backend-traces:
+	curl -sS http://127.0.0.1:12801/receiveData
 
 # ── Clean ──
 
