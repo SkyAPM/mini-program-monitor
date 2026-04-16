@@ -38,8 +38,8 @@ export function init(opts: MonitorOptions): void {
         adapter,
       }),
     ];
-    if (o.enable.tracing) {
-      exporters.push(new SwTraceExporter({ collector: o.collector, adapter }));
+    if (o.enable.tracing && o.traceCollector) {
+      exporters.push(new SwTraceExporter({ collector: o.traceCollector, adapter }));
     }
     exporter = exporters.length === 1 ? exporters[0] : new CompositeExporter(exporters);
   } else {

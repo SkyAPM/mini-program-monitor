@@ -19,6 +19,7 @@ export interface MonitorOptions {
   serviceVersion?: string;
   serviceInstance?: string;
   collector?: string;
+  traceCollector?: string;
   platform?: 'wechat' | 'alipay';
   enable?: EnableFlags;
   tracing?: TracingOptions;

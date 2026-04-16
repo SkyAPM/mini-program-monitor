@@ -5,6 +5,7 @@ export interface ResolvedOptions {
   serviceVersion: string;
   serviceInstance: string;
   collector: string;
+  traceCollector: string;
   platform: 'wechat' | 'alipay';
   enable: Required<EnableFlags>;
   tracing: Required<TracingOptions>;
@@ -23,6 +24,7 @@ export function resolveOptions(opts: MonitorOptions): ResolvedOptions {
     serviceVersion: opts.serviceVersion ?? 'v0.0.0',
     serviceInstance: opts.serviceInstance ?? autoInstance(),
     collector: opts.collector ?? '',
+    traceCollector: opts.traceCollector ?? opts.collector ?? '',
     platform: opts.platform ?? 'wechat',
     enable: {
       error: opts.enable?.error ?? true,
