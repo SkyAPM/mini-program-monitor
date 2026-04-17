@@ -69,6 +69,20 @@ export interface PlatformAdapter {
     ) => void,
   ): void;
 
+  interceptDownloadFile?(
+    wrapper: (
+      originalDownload: (opts: AdapterRequestOpts) => void,
+      opts: AdapterRequestOpts,
+    ) => void,
+  ): void;
+
+  interceptUploadFile?(
+    wrapper: (
+      originalUpload: (opts: AdapterRequestOpts) => void,
+      opts: AdapterRequestOpts,
+    ) => void,
+  ): void;
+
   getSystemInfoSync(): { brand: string; model: string; SDKVersion: string; platform: string; system: string };
 
   setStorageSync(key: string, data: string): void;

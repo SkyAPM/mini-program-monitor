@@ -38,6 +38,22 @@ interface AlipayMy {
     fail?: (err: { error?: number; errorMessage?: string }) => void;
     complete?: () => void;
   }): void;
+  downloadFile(opts: {
+    url: string;
+    header?: Record<string, string>;
+    success?: (res: { apFilePath?: string; tempFilePath?: string; statusCode?: number }) => void;
+    fail?: (err: { error?: number; errorMessage?: string }) => void;
+  }): void;
+  uploadFile(opts: {
+    url: string;
+    filePath: string;
+    fileName?: string;
+    fileType?: string;
+    header?: Record<string, string>;
+    formData?: Record<string, unknown>;
+    success?: (res: { data: string; statusCode?: number }) => void;
+    fail?: (err: { error?: number; errorMessage?: string }) => void;
+  }): void;
   onError(cb: (msg: string) => void): void;
   offError(cb: (msg: string) => void): void;
   onUnhandledRejection(cb: (res: { reason: unknown }) => void): void;
@@ -109,6 +125,67 @@ export function createAlipayAdapter(): PlatformAdapter {
           adapted,
         );
       }) as typeof my.request;
+    },
+
+    interceptDownloadFile(wrapper) {
+      if (typeof my.downloadFile !== 'function') return;
+      const originalDl = my.downloadFile.bind(my);
+      my.downloadFile = ((dlOpts: Parameters<typeof my.downloadFile>[0]) => {
+        const adapted: AdapterRequestOpts = {
+          url: dlOpts.url,
+          method: 'DOWNLOAD',
+          headers: (dlOpts.header ?? {}) as Record<string, string>,
+          onSuccess: (code, data) =>
+            dlOpts.success?.({
+              statusCode: code,
+              apFilePath: (data as { apFilePath?: string })?.apFilePath,
+              tempFilePath: (data as { tempFilePath?: string })?.tempFilePath,
+            }),
+          onFail: (msg) => dlOpts.fail?.({ errorMessage: msg }),
+        };
+        wrapper(
+          (opts) => {
+            originalDl({
+              url: opts.url,
+              header: opts.headers,
+              success: (res) => opts.onSuccess(res.statusCode ?? 200, { apFilePath: res.apFilePath, tempFilePath: res.tempFilePath }, {}),
+              fail: (err) => opts.onFail(err?.errorMessage ?? 'my.downloadFile failed'),
+            });
+          },
+          adapted,
+        );
+      }) as typeof my.downloadFile;
+    },
+
+    interceptUploadFile(wrapper) {
+      if (typeof my.uploadFile !== 'function') return;
+      const originalUp = my.uploadFile.bind(my);
+      my.uploadFile = ((upOpts: Parameters<typeof my.uploadFile>[0]) => {
+        const adapted: AdapterRequestOpts = {
+          url: upOpts.url,
+          method: 'UPLOAD',
+          data: { filePath: upOpts.filePath, fileName: upOpts.fileName, fileType: upOpts.fileType },
+          headers: (upOpts.header ?? {}) as Record<string, string>,
+          onSuccess: (code, data) =>
+            upOpts.success?.({ statusCode: code, data: typeof data === 'string' ? data : '' }),
+          onFail: (msg) => upOpts.fail?.({ errorMessage: msg }),
+        };
+        wrapper(
+          (opts) => {
+            originalUp({
+              url: opts.url,
+              filePath: upOpts.filePath,
+              fileName: upOpts.fileName,
+              fileType: upOpts.fileType,
+              header: opts.headers,
+              formData: upOpts.formData,
+              success: (res) => opts.onSuccess(res.statusCode ?? 200, res.data, {}),
+              fail: (err) => opts.onFail(err?.errorMessage ?? 'my.uploadFile failed'),
+            });
+          },
+          adapted,
+        );
+      }) as typeof my.uploadFile;
     },
 
     hasPerformanceObserver: false,

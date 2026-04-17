@@ -4,6 +4,8 @@ beforeEach(() => {
   // WeChat-style wx mock (default platform for tests)
   (globalThis as unknown as { wx: unknown }).wx = {
     request: vi.fn(),
+    downloadFile: vi.fn(),
+    uploadFile: vi.fn(),
     onError: vi.fn(),
     onUnhandledRejection: vi.fn(),
     onPageNotFound: vi.fn(),

@@ -105,6 +105,8 @@ export interface RequestCollectorHandle {
   drainHistogram(): void;
 }
 
+import type { AdapterRequestOpts } from '../adapters/types';
+
 export function installRequestCollector(
   adapter: PlatformAdapter,
   queue: RingQueue,
@@ -118,13 +120,17 @@ export function installRequestCollector(
   const urlBlacklist = options.tracing.urlBlacklist;
   const histogram = new HistogramAggregator();
 
-  adapter.interceptRequest((originalRequest, opts) => {
+  function instrument(
+    originalCall: (opts: AdapterRequestOpts) => void,
+    opts: AdapterRequestOpts,
+    methodOverride?: string,
+  ): void {
     if ((collectorUrl && opts.url.startsWith(collectorUrl)) ||
         (traceCollectorUrl && opts.url.startsWith(traceCollectorUrl))) {
-      return originalRequest(opts);
+      return originalCall(opts);
     }
 
-    const method = (opts.method || 'GET').toUpperCase();
+    const method = (methodOverride ?? opts.method ?? 'GET').toUpperCase();
     const startTime = Date.now();
     const peer = extractDomain(opts.url);
     const page = currentPagePath();
@@ -142,7 +148,7 @@ export function installRequestCollector(
       opts = { ...opts, headers: { ...opts.headers, sw8 } };
     }
 
-    originalRequest({
+    originalCall({
       ...opts,
       onSuccess: (statusCode, data, headers) => {
         try {
@@ -236,7 +242,11 @@ export function installRequestCollector(
         opts.onFail(errMsg);
       },
     });
-  });
+  }
+
+  adapter.interceptRequest((orig, opts) => instrument(orig, opts));
+  adapter.interceptDownloadFile?.((orig, opts) => instrument(orig, opts, 'DOWNLOAD'));
+  adapter.interceptUploadFile?.((orig, opts) => instrument(orig, opts, 'UPLOAD'));
 
   debug('request collector installed', tracingEnabled ? '(tracing on)' : '(metrics only)');
 

@@ -116,4 +116,59 @@ describe('request collector', () => {
     handle.drainHistogram();
     expect(q.size()).toBe(0);
   });
+
+  it('records download duration with DOWNLOAD method label', () => {
+    const downloadMock = vi.fn();
+    const wx = (globalThis as unknown as { wx: { downloadFile: unknown } }).wx;
+    wx.downloadFile = downloadMock;
+
+    const { q, handle } = setup();
+    (wx as unknown as { downloadFile: (o: Record<string, unknown>) => void }).downloadFile({
+      url: 'https://cdn.example.com/file.png', header: {}, success: () => {}, fail: () => {},
+    });
+    const call = downloadMock.mock.calls[0][0];
+    call.success({ statusCode: 200, tempFilePath: '/tmp/a.png', header: {} });
+
+    handle.drainHistogram();
+    const metric = q.drain().find((e) => e.kind === 'metric')!.payload as OtlpMetric[];
+    const attrs = metric[0].histogram!.dataPoints[0].attributes!;
+    expect(attrs.find((a) => a.key === 'http.request.method')?.value.stringValue).toBe('DOWNLOAD');
+  });
+
+  it('records upload duration with UPLOAD method label', () => {
+    const uploadMock = vi.fn();
+    const wx = (globalThis as unknown as { wx: { uploadFile: unknown } }).wx;
+    wx.uploadFile = uploadMock;
+
+    const { q, handle } = setup();
+    (wx as unknown as { uploadFile: (o: Record<string, unknown>) => void }).uploadFile({
+      url: 'https://api.example.com/upload', filePath: '/tmp/a.png', name: 'file',
+      header: {}, success: () => {}, fail: () => {},
+    });
+    const call = uploadMock.mock.calls[0][0];
+    call.success({ statusCode: 201, data: '{}', header: {} });
+
+    handle.drainHistogram();
+    const metric = q.drain().find((e) => e.kind === 'metric')!.payload as OtlpMetric[];
+    const attrs = metric[0].histogram!.dataPoints[0].attributes!;
+    expect(attrs.find((a) => a.key === 'http.request.method')?.value.stringValue).toBe('UPLOAD');
+  });
+
+  it('emits error log when download fails with 4xx', () => {
+    const downloadMock = vi.fn();
+    const wx = (globalThis as unknown as { wx: { downloadFile: unknown } }).wx;
+    wx.downloadFile = downloadMock;
+
+    const { q } = setup();
+    (wx as unknown as { downloadFile: (o: Record<string, unknown>) => void }).downloadFile({
+      url: 'https://cdn.example.com/missing.png', header: {}, success: () => {}, fail: () => {},
+    });
+    const call = downloadMock.mock.calls[0][0];
+    call.success({ statusCode: 404, tempFilePath: '', header: {} });
+
+    const log = q.drain().find((e) => e.kind === 'log');
+    expect(log).toBeDefined();
+    expect((log!.payload as OtlpLogRecord).body.stringValue).toContain('DOWNLOAD');
+    expect((log!.payload as OtlpLogRecord).body.stringValue).toContain('404');
+  });
 });

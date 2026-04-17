@@ -86,6 +86,73 @@ export function createWechatAdapter(): PlatformAdapter {
       }) as typeof wx.request;
     },
 
+    interceptDownloadFile(wrapper) {
+      if (typeof wx.downloadFile !== 'function') return;
+      const originalDl = wx.downloadFile.bind(wx);
+      wx.downloadFile = ((dlOpts: WechatMiniprogram.DownloadFileOption) => {
+        const adapted: AdapterRequestOpts = {
+          url: dlOpts.url,
+          method: 'DOWNLOAD',
+          headers: (dlOpts.header ?? {}) as Record<string, string>,
+          onSuccess: (code, data) =>
+            dlOpts.success?.({
+              statusCode: code,
+              tempFilePath: (data as { tempFilePath?: string })?.tempFilePath ?? '',
+              filePath: (data as { filePath?: string })?.filePath ?? '',
+            } as unknown as WechatMiniprogram.DownloadFileSuccessCallbackResult),
+          onFail: (msg) =>
+            dlOpts.fail?.({ errMsg: msg } as WechatMiniprogram.GeneralCallbackResult),
+        };
+        wrapper(
+          (opts) => {
+            originalDl({
+              url: opts.url,
+              header: opts.headers,
+              success: (res) => opts.onSuccess(res.statusCode, { tempFilePath: res.tempFilePath, filePath: res.filePath }, {}),
+              fail: (err) => opts.onFail(err?.errMsg ?? 'wx.downloadFile failed'),
+            });
+          },
+          adapted,
+        );
+        return {} as WechatMiniprogram.DownloadTask;
+      }) as typeof wx.downloadFile;
+    },
+
+    interceptUploadFile(wrapper) {
+      if (typeof wx.uploadFile !== 'function') return;
+      const originalUp = wx.uploadFile.bind(wx);
+      wx.uploadFile = ((upOpts: WechatMiniprogram.UploadFileOption) => {
+        const adapted: AdapterRequestOpts = {
+          url: upOpts.url,
+          method: 'UPLOAD',
+          data: { filePath: upOpts.filePath, name: upOpts.name },
+          headers: (upOpts.header ?? {}) as Record<string, string>,
+          onSuccess: (code, data) =>
+            upOpts.success?.({
+              statusCode: code,
+              data: typeof data === 'string' ? data : '',
+            } as unknown as WechatMiniprogram.UploadFileSuccessCallbackResult),
+          onFail: (msg) =>
+            upOpts.fail?.({ errMsg: msg } as WechatMiniprogram.GeneralCallbackResult),
+        };
+        wrapper(
+          (opts) => {
+            originalUp({
+              url: opts.url,
+              filePath: upOpts.filePath,
+              name: upOpts.name,
+              header: opts.headers,
+              formData: upOpts.formData,
+              success: (res) => opts.onSuccess(res.statusCode, res.data, {}),
+              fail: (err) => opts.onFail(err?.errMsg ?? 'wx.uploadFile failed'),
+            });
+          },
+          adapted,
+        );
+        return {} as WechatMiniprogram.UploadTask;
+      }) as typeof wx.uploadFile;
+    },
+
     wrapApp: (hooks) => wrapConstructor('App', hooks),
     wrapPage: (hooks) => wrapConstructor('Page', hooks),
 
