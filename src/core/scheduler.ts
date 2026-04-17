@@ -1,5 +1,6 @@
 import type { RingQueue } from './queue';
 import type { Exporter } from '../exporters/types';
+import type { MonitorEvent } from '../types/events';
 import { debug, warn } from '../shared/log';
 
 export type PreFlushHook = () => void;
@@ -32,11 +33,15 @@ export class Scheduler {
     }
   }
 
-  async flush(): Promise<void> {
+  collectPending(): MonitorEvent[] {
     for (const hook of this.preFlushHooks) {
       try { hook(); } catch (err) { warn('pre-flush hook failed', err); }
     }
-    const events = this.queue.drain();
+    return this.queue.drain();
+  }
+
+  async flush(): Promise<void> {
+    const events = this.collectPending();
     if (events.length === 0) return;
     debug('flushing', events.length, 'events');
     try {

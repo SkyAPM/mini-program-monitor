@@ -74,17 +74,15 @@ export function init(opts: MonitorOptions): void {
     }
   }
 
-  // M8: Flush on app hide + restore persisted events
   try {
     adapter.onAppHide(() => {
-      if (queue && queue.size() > 0 && scheduler) {
-        try {
-          const events = queue.drain();
-          const json = JSON.stringify(events);
-          adapter?.setStorageSync('mpm:pending', json);
-        } catch {
-          // storage write failure is not critical
-        }
+      if (!scheduler) return;
+      try {
+        const events = scheduler.collectPending();
+        if (events.length === 0) return;
+        adapter?.setStorageSync('mpm:pending', JSON.stringify(events));
+      } catch {
+        // storage write failure is not critical
       }
     });
 
