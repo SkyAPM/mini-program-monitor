@@ -2,8 +2,6 @@
 
 Monitoring agent for WeChat (微信) and Alipay (支付宝) Mini Programs, reporting to [Apache SkyWalking](https://skywalking.apache.org/) via OTLP and SkyWalking native protocols.
 
-> **Status: v0.1.0 released on npm, v0.2.x in development.**
-
 ## What you get
 
 - **Error tracking** — JS errors, unhandled promise rejections, page-not-found events. Reported as OTLP logs with OTel semantic conventions (`exception.type`, `exception.stacktrace`).
