@@ -2,7 +2,7 @@
 
 Per-version release notes for `mini-program-monitor`. Newest at the top.
 
-## v0.2.0 (unreleased)
+## v0.2.0
 
 SDK-side feature work and correctness fixes on top of v0.1.0. No breaking API changes at the `init()` level.
 
