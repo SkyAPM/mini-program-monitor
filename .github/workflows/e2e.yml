@@ -12,7 +12,11 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [wechat, alipay]
     steps:
       - uses: actions/checkout@v4
 
@@ -40,26 +44,13 @@ jobs:
 
       - run: make build
 
-      - name: Run e2e
+      - name: Run e2e (${{ matrix.platform }})
         working-directory: e2e
-        run: e2e run -c e2e.yaml
+        run: e2e run -c e2e-${{ matrix.platform }}.yaml
 
-      - name: Dump compose logs on failure
+      - name: Dump logs on failure
         if: failure()
-        working-directory: e2e
         run: |
-          docker compose ps || true
-          docker compose logs otel-collector || true
-          docker compose logs mock-collector || true
-
-      - name: Upload e2e configs on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-debug
-          path: |
-            e2e/e2e.yaml
-            e2e/docker-compose.yml
-            e2e/harness/
-            e2e/verify/
-          if-no-files-found: ignore
+          docker compose -f e2e/docker-compose.yml ps || true
+          docker compose -f e2e/docker-compose.yml logs mock-collector || true
+          docker logs otel-collector || true

@@ -1,10 +1,6 @@
-# skywalking-infra-e2e test case.
+# E2E test case for Alipay platform.
 #
-# Orchestration:
-#   setup   — docker compose up OTel Collector + mock-collector, build SDK,
-#             run Node harnesses to emit OTLP metrics + logs + traces.
-#   verify  — passthrough (verification done in setup steps).
-#   cleanup — docker compose down, always.
+# Verifies: OTLP metrics + logs + trace segments via Alipay adapter.
 
 setup:
   env: compose
@@ -20,26 +16,20 @@ setup:
         bash -c 'for i in $(seq 1 30); do curl -sS -o /dev/null http://127.0.0.1:4318/v1/metrics -X POST -d "{}" -H "Content-Type: application/json" 2>/dev/null && exit 0; sleep 1; done; exit 1'
     - name: build SDK
       command: bash -c "cd .. && npm run build"
-    - name: emit WeChat test events
-      command: node harness/run.mjs
-      env:
-        COLLECTOR_URL: http://127.0.0.1:4318
-    - name: emit Alipay test events
+    - name: emit Alipay OTLP events
       command: node harness/run-alipay.mjs
       env:
         COLLECTOR_URL: http://127.0.0.1:4318
-    - name: emit trace test events
-      command: node harness/run-tracing.mjs
+    - name: emit Alipay trace events
+      command: node harness/run-alipay-tracing.mjs
       env:
         COLLECTOR_URL: http://127.0.0.1:12801
     - name: wait for collector flush
       command: sleep 5
-    - name: verify OTLP data (both platforms)
-      command: node verify/check-otlp.mjs
-      env:
-        COMPOSE_DIR: .
+    - name: verify OTLP data
+      command: node verify/check-otlp-alipay.mjs
     - name: verify trace segments
-      command: node verify/check-traces.mjs
+      command: node verify/check-traces-alipay.mjs
       env:
         MOCK_COLLECTOR_URL: http://127.0.0.1:12801
 
@@ -48,7 +38,7 @@ verify:
     count: 1
     interval: 1s
   cases:
-    - query: echo "OTLP verification done in setup steps"
+    - query: echo "Alipay verification done in setup steps"
       expected: expected/ok.yaml
 
 cleanup:

@@ -1,0 +1,48 @@
+# E2E test case for WeChat platform.
+#
+# Verifies: OTLP metrics + logs + trace segments via WeChat adapter.
+
+setup:
+  env: compose
+  file: docker-compose.yml
+  timeout: 5m
+  init-system-environment: .env
+  steps:
+    - name: start otel-collector
+      command: |
+        docker run -d --name otel-collector -p 4318:4318 -v $(pwd)/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml otel/opentelemetry-collector-contrib:latest
+    - name: wait for otel-collector
+      command: |
+        bash -c 'for i in $(seq 1 30); do curl -sS -o /dev/null http://127.0.0.1:4318/v1/metrics -X POST -d "{}" -H "Content-Type: application/json" 2>/dev/null && exit 0; sleep 1; done; exit 1'
+    - name: build SDK
+      command: bash -c "cd .. && npm run build"
+    - name: emit WeChat OTLP events
+      command: node harness/run.mjs
+      env:
+        COLLECTOR_URL: http://127.0.0.1:4318
+    - name: emit WeChat trace events
+      command: node harness/run-tracing.mjs
+      env:
+        COLLECTOR_URL: http://127.0.0.1:12801
+    - name: wait for collector flush
+      command: sleep 5
+    - name: verify OTLP data
+      command: node verify/check-otlp-wechat.mjs
+    - name: verify trace segments
+      command: node verify/check-traces.mjs
+      env:
+        MOCK_COLLECTOR_URL: http://127.0.0.1:12801
+
+verify:
+  retry:
+    count: 1
+    interval: 1s
+  cases:
+    - query: echo "WeChat verification done in setup steps"
+      expected: expected/ok.yaml
+
+cleanup:
+  on: always
+  steps:
+    - name: stop otel-collector
+      command: docker rm -f otel-collector 2>/dev/null || true
