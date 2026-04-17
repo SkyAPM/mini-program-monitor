@@ -1,7 +1,7 @@
 import { currentPagePath } from '../shared/page';
 import type { RingQueue } from '../core/queue';
 import type { ResolvedOptions } from '../core/options';
-import type { PlatformAdapter, PerfEntry, PerfEntryList } from '../adapters/types';
+import type { PlatformAdapter, PerfEntry, PerfEntryList, Uninstall } from '../adapters/types';
 import type { OtlpMetric, OtlpKeyValue } from '../types/otlp';
 import { warn, debug } from '../shared/log';
 import { now } from '../shared/time';
@@ -71,7 +71,7 @@ function buildMetricsFromEntries(entries: PerfEntry[], timeMs: number): OtlpMetr
   return metrics;
 }
 
-function installObserverPerf(adapter: PlatformAdapter, queue: RingQueue): void {
+function installObserverPerf(adapter: PlatformAdapter, queue: RingQueue): Uninstall {
   const perf = adapter.getPerformance!();
   const observer = perf.createObserver((entryList: PerfEntryList) => {
     try {
@@ -87,32 +87,45 @@ function installObserverPerf(adapter: PlatformAdapter, queue: RingQueue): void {
   });
   observer.observe({ entryTypes: ['navigation', 'render', 'script', 'loadPackage'] });
   debug('perf collector installed (observer)');
+  return () => {
+    try { observer.disconnect(); } catch { /* ignored */ }
+  };
 }
 
 // ── Lifecycle-based path (Alipay / fallback) ──
 
-function installLifecyclePerf(adapter: PlatformAdapter, queue: RingQueue): void {
-  let appLaunchStart = 0;
+function installLifecyclePerf(adapter: PlatformAdapter, queue: RingQueue): Uninstall {
+  // If init() ran inside App.onLaunch, our wrapApp hooks never fire for the
+  // initial launch (App was already registered). Use install time as a
+  // fallback origin and emit once on the first page's onReady.
+  const installTime = Date.now();
+  let appLaunchStart: number | undefined;
+  let appLaunchEmitted = false;
   let pageLoadStarts: Record<string, number> = {};
+  const uninstalls: Uninstall[] = [];
+
+  function emitAppLaunch(duration: number, page: string): void {
+    if (appLaunchEmitted) return;
+    pushMetrics(queue, [gaugeMetric('miniprogram.app_launch.duration', duration, page, Date.now())]);
+    appLaunchEmitted = true;
+  }
 
   if (adapter.wrapApp) {
-    adapter.wrapApp({
+    uninstalls.push(adapter.wrapApp({
       onLaunch() {
         appLaunchStart = Date.now();
       },
       onShow() {
-        if (appLaunchStart > 0) {
-          const duration = Date.now() - appLaunchStart;
-          const page = currentPagePath();
-          pushMetrics(queue, [gaugeMetric('miniprogram.app_launch.duration', duration, page, Date.now())]);
-          appLaunchStart = 0;
+        if (appLaunchStart !== undefined) {
+          emitAppLaunch(Date.now() - appLaunchStart, currentPagePath());
+          appLaunchStart = undefined;
         }
       },
-    });
+    }));
   }
 
   if (adapter.wrapPage) {
-    adapter.wrapPage({
+    uninstalls.push(adapter.wrapPage({
       onLoad() {
         const page = currentPagePath();
         pageLoadStarts[page] = Date.now();
@@ -125,15 +138,21 @@ function installLifecyclePerf(adapter: PlatformAdapter, queue: RingQueue): void 
           pushMetrics(queue, [gaugeMetric('miniprogram.first_render.duration', duration, page, Date.now())]);
           delete pageLoadStarts[page];
         }
+        if (!appLaunchEmitted) {
+          emitAppLaunch(Date.now() - installTime, page);
+        }
       },
       onHide() {
         const page = currentPagePath();
         delete pageLoadStarts[page];
       },
-    });
+    }));
   }
 
   debug('perf collector installed (lifecycle)');
+  return () => {
+    for (const u of uninstalls) { try { u(); } catch { /* ignored */ } }
+  };
 }
 
 // ── Entry point ──
@@ -142,14 +161,14 @@ export function installPerfCollector(
   adapter: PlatformAdapter,
   queue: RingQueue,
   _options: ResolvedOptions,
-): void {
+): Uninstall {
   try {
     if (adapter.hasPerformanceObserver && adapter.getPerformance) {
-      installObserverPerf(adapter, queue);
-    } else {
-      installLifecyclePerf(adapter, queue);
+      return installObserverPerf(adapter, queue);
     }
+    return installLifecyclePerf(adapter, queue);
   } catch (err) {
     warn('perf collector install failed', err);
+    return () => {};
   }
 }

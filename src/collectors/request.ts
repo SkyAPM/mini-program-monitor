@@ -1,7 +1,7 @@
 import { currentPagePath } from '../shared/page';
 import type { RingQueue } from '../core/queue';
 import type { ResolvedOptions } from '../core/options';
-import type { PlatformAdapter } from '../adapters/types';
+import type { PlatformAdapter, Uninstall } from '../adapters/types';
 import type { OtlpKeyValue, OtlpLogRecord } from '../types/otlp';
 import type { SegmentObject, SpanObject } from '../types/segment';
 import { warn, debug } from '../shared/log';
@@ -103,6 +103,7 @@ function buildSw8Header(
 
 export interface RequestCollectorHandle {
   drainHistogram(): void;
+  uninstall: Uninstall;
 }
 
 import type { AdapterRequestOpts } from '../adapters/types';
@@ -247,9 +248,12 @@ export function installRequestCollector(
     });
   }
 
-  adapter.interceptRequest((orig, opts) => instrument(orig, opts));
-  adapter.interceptDownloadFile?.((orig, opts) => instrument(orig, opts, 'DOWNLOAD'));
-  adapter.interceptUploadFile?.((orig, opts) => instrument(orig, opts, 'UPLOAD'));
+  const uninstalls: Uninstall[] = [];
+  uninstalls.push(adapter.interceptRequest((orig, opts) => instrument(orig, opts)));
+  const offDl = adapter.interceptDownloadFile?.((orig, opts) => instrument(orig, opts, 'DOWNLOAD'));
+  if (offDl) uninstalls.push(offDl);
+  const offUp = adapter.interceptUploadFile?.((orig, opts) => instrument(orig, opts, 'UPLOAD'));
+  if (offUp) uninstalls.push(offUp);
 
   debug('request collector installed', tracingEnabled ? '(tracing on)' : '(metrics only)');
 
@@ -260,6 +264,9 @@ export function installRequestCollector(
       if (metric) {
         queue.push({ kind: 'metric', time: now(), payload: [metric] });
       }
+    },
+    uninstall() {
+      for (const u of uninstalls) { try { u(); } catch { /* ignored */ } }
     },
   };
 }

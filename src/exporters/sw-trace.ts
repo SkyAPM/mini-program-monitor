@@ -18,13 +18,25 @@ export class SwTraceExporter implements Exporter {
     this.adapter = opts.adapter;
   }
 
-  async export(events: MonitorEvent[]): Promise<void> {
+  async export(events: MonitorEvent[]): Promise<MonitorEvent[]> {
     const segments: SegmentObject[] = [];
+    const segmentEvents: MonitorEvent[] = [];
+    const passthrough: MonitorEvent[] = [];
     for (const e of events) {
-      if (e.kind === 'segment') segments.push(e.payload as SegmentObject);
+      if (e.kind === 'segment') {
+        segments.push(e.payload as SegmentObject);
+        segmentEvents.push(e);
+      } else {
+        passthrough.push(e);
+      }
     }
-    if (segments.length === 0) return;
-    await this.post('/v3/segments', segments);
+    if (segments.length === 0) return passthrough;
+    try {
+      await this.post('/v3/segments', segments);
+      return passthrough;
+    } catch (err) {
+      return [...passthrough, ...segmentEvents];
+    }
   }
 
   private post(path: string, data: unknown): Promise<void> {

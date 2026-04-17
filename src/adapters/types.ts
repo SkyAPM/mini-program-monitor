@@ -35,17 +35,19 @@ export interface PerfHandle {
 
 export type LifecycleHook = (...args: unknown[]) => void;
 
+export type Uninstall = () => void;
+
 export interface PlatformAdapter {
   readonly name: 'wechat' | 'alipay';
 
   request(opts: AdapterRequestOpts): void;
 
-  onError(cb: (msg: string) => void): void;
-  onUnhandledRejection(cb: (res: { reason: unknown }) => void): void;
-  onPageNotFound?(cb: (res: { path: string; query?: Record<string, string>; isEntryPage?: boolean }) => void): void;
+  onError(cb: (msg: string) => void): Uninstall;
+  onUnhandledRejection(cb: (res: { reason: unknown }) => void): Uninstall;
+  onPageNotFound?(cb: (res: { path: string; query?: Record<string, string>; isEntryPage?: boolean }) => void): Uninstall;
 
-  onAppShow(cb: () => void): void;
-  onAppHide(cb: () => void): void;
+  onAppShow(cb: () => void): Uninstall;
+  onAppHide(cb: () => void): Uninstall;
 
   hasPerformanceObserver: boolean;
   getPerformance?(): PerfHandle;
@@ -53,35 +55,35 @@ export interface PlatformAdapter {
   wrapApp?(hooks: {
     onLaunch?: LifecycleHook;
     onShow?: LifecycleHook;
-  }): void;
+  }): Uninstall;
 
   wrapPage?(hooks: {
     onLoad?: LifecycleHook;
     onReady?: LifecycleHook;
     onShow?: LifecycleHook;
     onHide?: LifecycleHook;
-  }): void;
+  }): Uninstall;
 
   interceptRequest(
     wrapper: (
       originalRequest: (opts: AdapterRequestOpts) => void,
       opts: AdapterRequestOpts,
     ) => void,
-  ): void;
+  ): Uninstall;
 
   interceptDownloadFile?(
     wrapper: (
       originalDownload: (opts: AdapterRequestOpts) => void,
       opts: AdapterRequestOpts,
     ) => void,
-  ): void;
+  ): Uninstall;
 
   interceptUploadFile?(
     wrapper: (
       originalUpload: (opts: AdapterRequestOpts) => void,
       opts: AdapterRequestOpts,
     ) => void,
-  ): void;
+  ): Uninstall;
 
   getSystemInfoSync(): { brand: string; model: string; SDKVersion: string; platform: string; system: string };
 

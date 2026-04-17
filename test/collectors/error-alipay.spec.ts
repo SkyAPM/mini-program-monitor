@@ -14,15 +14,15 @@ function createFakeAlipayAdapter(): PlatformAdapter {
   return {
     name: 'alipay',
     request: vi.fn(),
-    onError: (cb) => { onErrorCb = cb; },
-    onUnhandledRejection: (cb) => { onRejectionCb = cb; },
+    onError: (cb) => { onErrorCb = cb; return () => {}; },
+    onUnhandledRejection: (cb) => { onRejectionCb = cb; return () => {}; },
     // no onPageNotFound on Alipay
-    onAppShow: vi.fn(),
-    onAppHide: vi.fn(),
+    onAppShow: vi.fn(() => () => {}),
+    onAppHide: vi.fn(() => () => {}),
     hasPerformanceObserver: false,
     getSystemInfoSync: () => ({ brand: '', model: '', SDKVersion: '', platform: '', system: '' }),
     setStorageSync: vi.fn(),
-    interceptRequest: vi.fn(),
+    interceptRequest: vi.fn(() => () => {}),
     getStorageSync: () => '',
   };
 }

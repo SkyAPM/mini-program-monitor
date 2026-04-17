@@ -40,41 +40,46 @@ export class OtlpHttpExporter implements Exporter {
     return this.collector;
   }
 
-  async export(events: MonitorEvent[]): Promise<void> {
+  async export(events: MonitorEvent[]): Promise<MonitorEvent[]> {
     const logRecords: OtlpLogRecord[] = [];
     const metrics: OtlpMetric[] = [];
+    const logEvents: MonitorEvent[] = [];
+    const metricEvents: MonitorEvent[] = [];
+    const passthrough: MonitorEvent[] = [];
 
     for (const e of events) {
       if (e.kind === 'log') {
         logRecords.push(e.payload as OtlpLogRecord);
+        logEvents.push(e);
       } else if (e.kind === 'metric') {
-        const batch = e.payload as OtlpMetric[];
-        metrics.push(...batch);
+        metrics.push(...(e.payload as OtlpMetric[]));
+        metricEvents.push(e);
+      } else {
+        passthrough.push(e);
       }
     }
 
-    const posts: Promise<void>[] = [];
+    const failed: MonitorEvent[] = [...passthrough];
+
+    const posts: Array<{ path: string; body: unknown; src: MonitorEvent[] }> = [];
     if (logRecords.length > 0) {
       const body: ExportLogsServiceRequest = {
-        resourceLogs: [{
-          resource: this.resource,
-          scopeLogs: [{ scope: this.scope, logRecords }],
-        }],
+        resourceLogs: [{ resource: this.resource, scopeLogs: [{ scope: this.scope, logRecords }] }],
       };
-      const data = this.encoding === 'proto' ? encodeLogsRequest(body).buffer : body;
-      posts.push(this.post('/v1/logs', data));
+      posts.push({ path: '/v1/logs', body: this.encoding === 'proto' ? encodeLogsRequest(body).buffer : body, src: logEvents });
     }
     if (metrics.length > 0) {
       const body: ExportMetricsServiceRequest = {
-        resourceMetrics: [{
-          resource: this.resource,
-          scopeMetrics: [{ scope: this.scope, metrics }],
-        }],
+        resourceMetrics: [{ resource: this.resource, scopeMetrics: [{ scope: this.scope, metrics }] }],
       };
-      const data = this.encoding === 'proto' ? encodeMetricsRequest(body).buffer : body;
-      posts.push(this.post('/v1/metrics', data));
+      posts.push({ path: '/v1/metrics', body: this.encoding === 'proto' ? encodeMetricsRequest(body).buffer : body, src: metricEvents });
     }
-    await Promise.all(posts);
+
+    const results = await Promise.allSettled(posts.map((p) => this.post(p.path, p.body)));
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].status === 'rejected') failed.push(...posts[i].src);
+    }
+    return failed;
   }
 
   private post(path: string, data: unknown): Promise<void> {

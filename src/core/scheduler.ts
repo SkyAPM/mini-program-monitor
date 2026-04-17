@@ -44,11 +44,20 @@ export class Scheduler {
     const events = this.collectPending();
     if (events.length === 0) return;
     debug('flushing', events.length, 'events');
+    let failed: MonitorEvent[];
     try {
-      await this.exporter.export(events);
+      failed = await this.exporter.export(events);
     } catch (err) {
-      warn('exporter failed, re-queueing', events.length, 'events', err);
-      for (const e of events) this.queue.push(e);
+      warn('exporter crashed, re-queueing', events.length, 'events', err);
+      failed = events;
+    }
+    if (failed.length > 0) {
+      if (failed.length < events.length) {
+        debug('exporter partial failure, re-queueing', failed.length, 'of', events.length);
+      } else {
+        warn('exporter failed to deliver any of', events.length, 'events — re-queueing');
+      }
+      for (const e of failed) this.queue.push(e);
     }
   }
 }

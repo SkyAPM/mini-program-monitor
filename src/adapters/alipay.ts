@@ -1,15 +1,15 @@
 import { _global } from '../shared/global';
-import type { PlatformAdapter, AdapterRequestOpts, LifecycleHook } from './types';
+import type { PlatformAdapter, AdapterRequestOpts, LifecycleHook, Uninstall } from './types';
 
 function wrapConstructor(
   name: 'App' | 'Page',
   hooks: Record<string, LifecycleHook | undefined>,
-): void {
+): Uninstall {
   const g = (_global) as Record<string, unknown>;
   const original = g[name] as (opts: Record<string, unknown>) => void;
-  if (typeof original !== 'function') return;
+  if (typeof original !== 'function') return () => {};
 
-  g[name] = (opts: Record<string, unknown>) => {
+  const wrapped = (opts: Record<string, unknown>) => {
     for (const [key, hook] of Object.entries(hooks)) {
       if (!hook) continue;
       const userFn = opts[key] as ((...args: unknown[]) => void) | undefined;
@@ -23,6 +23,10 @@ function wrapConstructor(
       };
     }
     return original(opts);
+  };
+  g[name] = wrapped;
+  return () => {
+    if (g[name] === wrapped) g[name] = original;
   };
 }
 
@@ -91,16 +95,28 @@ export function createAlipayAdapter(): PlatformAdapter {
       });
     },
 
-    onError: (cb) => my.onError(cb),
-    onUnhandledRejection: (cb) => my.onUnhandledRejection(cb),
+    onError(cb) {
+      my.onError(cb);
+      return () => my.offError(cb);
+    },
+    onUnhandledRejection(cb) {
+      my.onUnhandledRejection(cb);
+      return () => my.offUnhandledRejection(cb);
+    },
     // Alipay does not have onPageNotFound as a global API
 
-    onAppShow: (cb) => my.onAppShow(cb),
-    onAppHide: (cb) => my.onAppHide(cb),
+    onAppShow(cb) {
+      my.onAppShow(cb);
+      return () => my.offAppShow(cb);
+    },
+    onAppHide(cb) {
+      my.onAppHide(cb);
+      return () => my.offAppHide(cb);
+    },
 
     interceptRequest(wrapper) {
-      const originalMy = my.request.bind(my);
-      my.request = ((reqOpts: Parameters<typeof my.request>[0]) => {
+      const originalMy = my.request;
+      const patched = ((reqOpts: Parameters<typeof my.request>[0]) => {
         const adapted: AdapterRequestOpts = {
           url: reqOpts.url,
           method: reqOpts.method ?? 'GET',
@@ -114,7 +130,7 @@ export function createAlipayAdapter(): PlatformAdapter {
         let task: unknown;
         wrapper(
           (opts) => {
-            task = originalMy({
+            task = originalMy.call(my, {
               url: opts.url,
               method: opts.method,
               data: opts.data,
@@ -127,12 +143,16 @@ export function createAlipayAdapter(): PlatformAdapter {
         );
         return task as ReturnType<typeof my.request>;
       }) as typeof my.request;
+      my.request = patched;
+      return () => {
+        if (my.request === patched) my.request = originalMy;
+      };
     },
 
     interceptDownloadFile(wrapper) {
-      if (typeof my.downloadFile !== 'function') return;
-      const originalDl = my.downloadFile.bind(my);
-      my.downloadFile = ((dlOpts: Parameters<typeof my.downloadFile>[0]) => {
+      if (typeof my.downloadFile !== 'function') return () => {};
+      const originalDl = my.downloadFile;
+      const patched = ((dlOpts: Parameters<typeof my.downloadFile>[0]) => {
         const adapted: AdapterRequestOpts = {
           url: dlOpts.url,
           method: 'DOWNLOAD',
@@ -148,7 +168,7 @@ export function createAlipayAdapter(): PlatformAdapter {
         let task: unknown;
         wrapper(
           (opts) => {
-            task = originalDl({
+            task = originalDl.call(my, {
               url: opts.url,
               header: opts.headers,
               success: (res) => opts.onSuccess(res.statusCode ?? 200, { apFilePath: res.apFilePath, tempFilePath: res.tempFilePath }, {}),
@@ -159,12 +179,16 @@ export function createAlipayAdapter(): PlatformAdapter {
         );
         return task as ReturnType<typeof my.downloadFile>;
       }) as typeof my.downloadFile;
+      my.downloadFile = patched;
+      return () => {
+        if (my.downloadFile === patched) my.downloadFile = originalDl;
+      };
     },
 
     interceptUploadFile(wrapper) {
-      if (typeof my.uploadFile !== 'function') return;
-      const originalUp = my.uploadFile.bind(my);
-      my.uploadFile = ((upOpts: Parameters<typeof my.uploadFile>[0]) => {
+      if (typeof my.uploadFile !== 'function') return () => {};
+      const originalUp = my.uploadFile;
+      const patched = ((upOpts: Parameters<typeof my.uploadFile>[0]) => {
         const adapted: AdapterRequestOpts = {
           url: upOpts.url,
           method: 'UPLOAD',
@@ -177,7 +201,7 @@ export function createAlipayAdapter(): PlatformAdapter {
         let task: unknown;
         wrapper(
           (opts) => {
-            task = originalUp({
+            task = originalUp.call(my, {
               url: opts.url,
               filePath: upOpts.filePath,
               fileName: upOpts.fileName,
@@ -192,6 +216,10 @@ export function createAlipayAdapter(): PlatformAdapter {
         );
         return task as ReturnType<typeof my.uploadFile>;
       }) as typeof my.uploadFile;
+      my.uploadFile = patched;
+      return () => {
+        if (my.uploadFile === patched) my.uploadFile = originalUp;
+      };
     },
 
     hasPerformanceObserver: false,

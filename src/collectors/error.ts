@@ -1,7 +1,7 @@
 import { currentPagePath } from '../shared/page';
 import type { RingQueue } from '../core/queue';
 import type { ResolvedOptions } from '../core/options';
-import type { PlatformAdapter } from '../adapters/types';
+import type { PlatformAdapter, Uninstall } from '../adapters/types';
 import type { OtlpLogRecord, OtlpKeyValue } from '../types/otlp';
 import { warn } from '../shared/log';
 import { now } from '../shared/time';
@@ -35,9 +35,10 @@ export function installErrorCollector(
   adapter: PlatformAdapter,
   queue: RingQueue,
   _options: ResolvedOptions,
-): void {
+): Uninstall {
+  const uninstalls: Uninstall[] = [];
   try {
-    adapter.onError((stack) => {
+    uninstalls.push(adapter.onError((stack) => {
       try {
         const text = typeof stack === 'string' ? stack : String(stack ?? '');
         const lines = text.split('\n');
@@ -53,13 +54,13 @@ export function installErrorCollector(
       } catch (err) {
         warn('error collector onError handler failed', err);
       }
-    });
+    }));
   } catch (err) {
     warn('adapter.onError registration failed', err);
   }
 
   try {
-    adapter.onUnhandledRejection((res) => {
+    uninstalls.push(adapter.onUnhandledRejection((res) => {
       try {
         const reason = res?.reason;
         const asError = reason instanceof Error ? reason : null;
@@ -77,14 +78,14 @@ export function installErrorCollector(
       } catch (err) {
         warn('error collector onUnhandledRejection handler failed', err);
       }
-    });
+    }));
   } catch (err) {
     warn('adapter.onUnhandledRejection registration failed', err);
   }
 
   if (adapter.onPageNotFound) {
     try {
-      adapter.onPageNotFound((res) => {
+      uninstalls.push(adapter.onPageNotFound((res) => {
         try {
           const path = res?.path ?? 'unknown';
           queue.push({
@@ -95,9 +96,13 @@ export function installErrorCollector(
         } catch (err) {
           warn('error collector onPageNotFound handler failed', err);
         }
-      });
+      }));
     } catch (err) {
       warn('adapter.onPageNotFound registration failed', err);
     }
   }
+
+  return () => {
+    for (const u of uninstalls) { try { u(); } catch { /* ignored */ } }
+  };
 }

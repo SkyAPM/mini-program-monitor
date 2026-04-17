@@ -1,15 +1,15 @@
 import { _global } from '../shared/global';
-import type { PlatformAdapter, AdapterRequestOpts, PerfHandle, LifecycleHook } from './types';
+import type { PlatformAdapter, AdapterRequestOpts, PerfHandle, LifecycleHook, Uninstall } from './types';
 
 function wrapConstructor(
   name: 'App' | 'Page',
   hooks: Record<string, LifecycleHook | undefined>,
-): void {
+): Uninstall {
   const g = (_global) as Record<string, unknown>;
   const original = g[name] as (opts: Record<string, unknown>) => void;
-  if (typeof original !== 'function') return;
+  if (typeof original !== 'function') return () => {};
 
-  g[name] = (opts: Record<string, unknown>) => {
+  const wrapped = (opts: Record<string, unknown>) => {
     for (const [key, hook] of Object.entries(hooks)) {
       if (!hook) continue;
       const userFn = opts[key] as ((...args: unknown[]) => void) | undefined;
@@ -23,6 +23,10 @@ function wrapConstructor(
       };
     }
     return original(opts);
+  };
+  g[name] = wrapped;
+  return () => {
+    if (g[name] === wrapped) g[name] = original;
   };
 }
 
@@ -45,21 +49,49 @@ export function createWechatAdapter(): PlatformAdapter {
       });
     },
 
-    onError: (cb) => (wx.onError as (cb: (msg: string) => void) => void)(cb),
-    onUnhandledRejection: (cb) =>
-      (wx.onUnhandledRejection as (cb: (res: { reason: unknown }) => void) => void)(cb),
-    onPageNotFound: (cb) =>
-      (wx.onPageNotFound as (cb: (res: { path: string }) => void) => void)(cb),
+    onError(cb) {
+      (wx.onError as (cb: (msg: string) => void) => void)(cb);
+      return () => {
+        const off = (wx as unknown as { offError?: (cb: (msg: string) => void) => void }).offError;
+        if (off) off(cb);
+      };
+    },
+    onUnhandledRejection(cb) {
+      (wx.onUnhandledRejection as (cb: (res: { reason: unknown }) => void) => void)(cb);
+      return () => {
+        const off = (wx as unknown as { offUnhandledRejection?: (cb: (res: { reason: unknown }) => void) => void }).offUnhandledRejection;
+        if (off) off(cb);
+      };
+    },
+    onPageNotFound(cb) {
+      (wx.onPageNotFound as (cb: (res: { path: string }) => void) => void)(cb);
+      return () => {
+        const off = (wx as unknown as { offPageNotFound?: (cb: (res: { path: string }) => void) => void }).offPageNotFound;
+        if (off) off(cb);
+      };
+    },
 
-    onAppShow: (cb) => (wx.onAppShow as (cb: () => void) => void)(cb),
-    onAppHide: (cb) => (wx.onAppHide as (cb: () => void) => void)(cb),
+    onAppShow(cb) {
+      (wx.onAppShow as (cb: () => void) => void)(cb);
+      return () => {
+        const off = (wx as unknown as { offAppShow?: (cb: () => void) => void }).offAppShow;
+        if (off) off(cb);
+      };
+    },
+    onAppHide(cb) {
+      (wx.onAppHide as (cb: () => void) => void)(cb);
+      return () => {
+        const off = (wx as unknown as { offAppHide?: (cb: () => void) => void }).offAppHide;
+        if (off) off(cb);
+      };
+    },
 
     hasPerformanceObserver: true,
     getPerformance: () => wx.getPerformance() as unknown as PerfHandle,
 
     interceptRequest(wrapper) {
-      const originalWx = wx.request.bind(wx);
-      wx.request = ((reqOpts: WechatMiniprogram.RequestOption) => {
+      const originalWx = wx.request;
+      const patched = ((reqOpts: WechatMiniprogram.RequestOption) => {
         const adapted: AdapterRequestOpts = {
           url: reqOpts.url,
           method: (reqOpts.method ?? 'GET') as string,
@@ -73,7 +105,7 @@ export function createWechatAdapter(): PlatformAdapter {
         let task: WechatMiniprogram.RequestTask | undefined;
         wrapper(
           (opts) => {
-            task = originalWx({
+            task = originalWx.call(wx, {
               url: opts.url,
               method: opts.method as WechatMiniprogram.RequestOption['method'],
               data: opts.data as WechatMiniprogram.IAnyObject,
@@ -86,12 +118,16 @@ export function createWechatAdapter(): PlatformAdapter {
         );
         return task as WechatMiniprogram.RequestTask;
       }) as typeof wx.request;
+      wx.request = patched;
+      return () => {
+        if (wx.request === patched) wx.request = originalWx;
+      };
     },
 
     interceptDownloadFile(wrapper) {
-      if (typeof wx.downloadFile !== 'function') return;
-      const originalDl = wx.downloadFile.bind(wx);
-      wx.downloadFile = ((dlOpts: WechatMiniprogram.DownloadFileOption) => {
+      if (typeof wx.downloadFile !== 'function') return () => {};
+      const originalDl = wx.downloadFile;
+      const patched = ((dlOpts: WechatMiniprogram.DownloadFileOption) => {
         const adapted: AdapterRequestOpts = {
           url: dlOpts.url,
           method: 'DOWNLOAD',
@@ -108,7 +144,7 @@ export function createWechatAdapter(): PlatformAdapter {
         let task: WechatMiniprogram.DownloadTask | undefined;
         wrapper(
           (opts) => {
-            task = originalDl({
+            task = originalDl.call(wx, {
               url: opts.url,
               header: opts.headers,
               success: (res) => opts.onSuccess(res.statusCode, { tempFilePath: res.tempFilePath, filePath: res.filePath }, {}),
@@ -119,12 +155,16 @@ export function createWechatAdapter(): PlatformAdapter {
         );
         return task as WechatMiniprogram.DownloadTask;
       }) as typeof wx.downloadFile;
+      wx.downloadFile = patched;
+      return () => {
+        if (wx.downloadFile === patched) wx.downloadFile = originalDl;
+      };
     },
 
     interceptUploadFile(wrapper) {
-      if (typeof wx.uploadFile !== 'function') return;
-      const originalUp = wx.uploadFile.bind(wx);
-      wx.uploadFile = ((upOpts: WechatMiniprogram.UploadFileOption) => {
+      if (typeof wx.uploadFile !== 'function') return () => {};
+      const originalUp = wx.uploadFile;
+      const patched = ((upOpts: WechatMiniprogram.UploadFileOption) => {
         const adapted: AdapterRequestOpts = {
           url: upOpts.url,
           method: 'UPLOAD',
@@ -141,7 +181,7 @@ export function createWechatAdapter(): PlatformAdapter {
         let task: WechatMiniprogram.UploadTask | undefined;
         wrapper(
           (opts) => {
-            task = originalUp({
+            task = originalUp.call(wx, {
               url: opts.url,
               filePath: upOpts.filePath,
               name: upOpts.name,
@@ -155,6 +195,10 @@ export function createWechatAdapter(): PlatformAdapter {
         );
         return task as WechatMiniprogram.UploadTask;
       }) as typeof wx.uploadFile;
+      wx.uploadFile = patched;
+      return () => {
+        if (wx.uploadFile === patched) wx.uploadFile = originalUp;
+      };
     },
 
     wrapApp: (hooks) => wrapConstructor('App', hooks),

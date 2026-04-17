@@ -1,6 +1,6 @@
 import type { MonitorOptions } from './types/options';
 import type { MonitorEvent, EventKind } from './types/events';
-import type { PlatformAdapter } from './adapters/types';
+import type { PlatformAdapter, Uninstall } from './adapters/types';
 import type { Exporter } from './exporters/types';
 import { resolveOptions } from './core/options';
 import { RingQueue } from './core/queue';
@@ -20,8 +20,14 @@ import { now } from './shared/time';
 let queue: RingQueue | null = null;
 let scheduler: Scheduler | null = null;
 let adapter: PlatformAdapter | null = null;
+let teardowns: Uninstall[] = [];
 
 export function init(opts: MonitorOptions): void {
+  if (queue || scheduler || adapter) {
+    warn('init() called twice without shutdown() — tearing down previous instance first');
+    shutdown();
+  }
+
   const o = resolveOptions(opts);
   setDebug(o.debug);
 
@@ -52,7 +58,7 @@ export function init(opts: MonitorOptions): void {
 
   if (o.enable.error) {
     try {
-      installErrorCollector(adapter, queue, o);
+      teardowns.push(installErrorCollector(adapter, queue, o));
     } catch (err) {
       warn('error collector install failed', err);
     }
@@ -60,7 +66,7 @@ export function init(opts: MonitorOptions): void {
 
   if (o.enable.perf) {
     try {
-      installPerfCollector(adapter, queue, o);
+      teardowns.push(installPerfCollector(adapter, queue, o));
     } catch (err) {
       warn('perf collector install failed', err);
     }
@@ -70,13 +76,14 @@ export function init(opts: MonitorOptions): void {
     try {
       const handle = installRequestCollector(adapter, queue, o);
       scheduler.onPreFlush(() => handle.drainHistogram());
+      teardowns.push(handle.uninstall);
     } catch (err) {
       warn('request collector install failed', err);
     }
   }
 
   try {
-    adapter.onAppHide(() => {
+    teardowns.push(adapter.onAppHide(() => {
       if (!scheduler) return;
       try {
         const events = scheduler.collectPending();
@@ -85,7 +92,7 @@ export function init(opts: MonitorOptions): void {
       } catch {
         // storage write failure is not critical
       }
-    });
+    }));
 
     const pending = adapter.getStorageSync('mpm:pending');
     if (pending) {
@@ -113,6 +120,10 @@ export async function flush(): Promise<void> {
 
 export function shutdown(): void {
   scheduler?.stop();
+  for (const t of teardowns) {
+    try { t(); } catch { /* ignored */ }
+  }
+  teardowns = [];
   scheduler = null;
   queue = null;
   adapter = null;

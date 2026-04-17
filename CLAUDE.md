@@ -19,6 +19,9 @@ A monitoring SDK for WeChat and Alipay mini-programs, reporting to Apache SkyWal
 9. **No comments explaining what code does.** Only comments for non-obvious *why*. Identifiers should carry the meaning.
 10. **Always run `make typecheck` and `make test` before pushing.** Never push code that fails typecheck or tests.
 11. **Tests must exercise the default code path, not bypass it.** When you add a new default (new encoding, new behavior), at least one test has to hit that default. If an existing test only passes because of an opt-in escape hatch (e.g. `encoding: 'json'`, or a hardcoded default that coincidentally matches the detected value), the test is giving false confidence.
+12. **Every global patch must have a teardown.** Monkey-patches of `wx.request` / `my.request` / `App` / `Page`, and every `onError` / `onAppHide` / observer registration, return an `Uninstall` function from the adapter. Collectors bubble these up so `shutdown()` actually restores the original APIs and unregisters hooks. Without this, `init()` → `shutdown()` → `init()` stacks wrappers and leaks stale closures.
+13. **Exporters return what they couldn't deliver; the scheduler re-queues only those.** `Exporter.export` returns the subset of input events that weren't successfully exported. `CompositeExporter` intersects per-sub-exporter failure sets so a partial failure (OTLP ok, SkyWalking trace failed) doesn't duplicate healthy log/metric data on the next flush tick.
+14. **`EventKind` only lists values the exporters actually consume (`'log' | 'metric' | 'segment'`).** Don't re-introduce 'error'/'perf' as public kinds — `record()` would quietly drop them.
 
 ## Repo layout
 
