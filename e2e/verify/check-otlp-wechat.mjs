@@ -18,6 +18,8 @@ assert(logs.includes('miniprogram.app_launch.duration'), 'metric miniprogram.app
 assert(logs.includes('miniprogram.first_render.duration'), 'metric miniprogram.first_render.duration');
 assert(logs.includes('miniprogram.first_paint.time'), 'metric miniprogram.first_paint.time');
 assert(logs.includes('miniprogram.request.duration'), 'metric miniprogram.request.duration');
+assert(logs.includes('DataType: Histogram'), 'request metric is a histogram');
+assert(logs.includes('HistogramDataPoints'), 'histogram data points present');
 assert(logs.includes('SeverityText: ERROR'), 'log severity ERROR');
 assert(logs.includes('TypeError'), 'log body contains TypeError');
 assert(logs.includes('exception.type'), 'log has exception.type attribute');

@@ -67,7 +67,8 @@ export function init(opts: MonitorOptions): void {
 
   if (o.enable.request) {
     try {
-      installRequestCollector(adapter, queue, o);
+      const handle = installRequestCollector(adapter, queue, o);
+      scheduler.onPreFlush(() => handle.drainHistogram());
     } catch (err) {
       warn('request collector install failed', err);
     }

@@ -38,7 +38,7 @@ verify:
     count: 1
     interval: 1s
   cases:
-    - query: echo "WeChat verification done in setup steps"
+    - query: echo "OTLP verification done in setup steps"
       expected: expected/ok.yaml
 
 cleanup:

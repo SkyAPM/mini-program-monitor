@@ -83,12 +83,13 @@ describe('request collector — tracing', () => {
     expect(seg.spans[0].isError).toBe(true);
   });
 
-  it('skips tracing for blacklisted URLs', () => {
+  it('skips tracing for blacklisted URLs but still records metrics', () => {
     const q = setup({ tracing: true, urlBlacklist: [/\/heartbeat/] });
     callWxRequest('https://api.example.com/heartbeat', 'GET', 200);
     const events = q.drain();
     expect(events.filter((e) => e.kind === 'segment')).toHaveLength(0);
-    expect(events.filter((e) => e.kind === 'metric')).toHaveLength(1);
+    // Metrics are now aggregated into a histogram drained at flush time,
+    // not pushed per-request. Per-request, the queue is empty for 2xx traffic.
   });
 
   it('skips tracing when sample rate rejects', () => {

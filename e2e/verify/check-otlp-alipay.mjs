@@ -15,6 +15,7 @@ function assert(condition, msg) {
 }
 
 assert(logs.includes('miniprogram.request.duration'), 'metric miniprogram.request.duration');
+assert(logs.includes('DataType: Histogram'), 'request metric is a histogram');
 assert(logs.includes('SeverityText: ERROR'), 'log severity ERROR');
 assert(logs.includes('exception.type'), 'log has exception.type attribute');
 assert(logs.includes('Str(alipay-e2e)'), 'resource service.name = alipay-e2e');

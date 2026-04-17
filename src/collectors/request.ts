@@ -2,7 +2,7 @@ import { currentPagePath } from '../shared/page';
 import type { RingQueue } from '../core/queue';
 import type { ResolvedOptions } from '../core/options';
 import type { PlatformAdapter } from '../adapters/types';
-import type { OtlpMetric, OtlpKeyValue, OtlpLogRecord } from '../types/otlp';
+import type { OtlpKeyValue, OtlpLogRecord } from '../types/otlp';
 import type { SegmentObject, SpanObject } from '../types/segment';
 import { warn, debug } from '../shared/log';
 import { now } from '../shared/time';
@@ -10,11 +10,11 @@ import { base64Encode } from '../shared/base64';
 import uuid from '../vendor/skywalking/uuid';
 import { ComponentId, SpanLayer, SpanType } from '../vendor/skywalking/constant';
 import { shouldSample } from '../core/sampler';
+import { HistogramAggregator } from '../core/histogram';
 
 function toNanos(ms: number): string {
   return ms + '000000';
 }
-
 
 function extractDomain(url: string): string {
   try {
@@ -40,14 +40,12 @@ function isBlacklisted(url: string, blacklist: (string | RegExp)[]): boolean {
   return false;
 }
 
-function buildRequestMetrics(
+function buildAttrs(
   method: string,
   statusCode: number,
-  durationMs: number,
   url: string,
   urlGroupRules: Record<string, RegExp>,
-  timeMs: number,
-): OtlpMetric[] {
+): OtlpKeyValue[] {
   const attrs: OtlpKeyValue[] = [
     { key: 'http.request.method', value: { stringValue: method } },
     { key: 'http.response.status_code', value: { stringValue: String(statusCode) } },
@@ -58,17 +56,7 @@ function buildRequestMetrics(
   if (urlGroup) {
     attrs.push({ key: 'url.path.group', value: { stringValue: urlGroup } });
   }
-  return [{
-    name: 'miniprogram.request.duration',
-    unit: 'ms',
-    gauge: {
-      dataPoints: [{
-        asInt: String(Math.floor(durationMs)),
-        timeUnixNano: toNanos(timeMs),
-        attributes: attrs,
-      }],
-    },
-  }];
+  return attrs;
 }
 
 function buildAjaxErrorLog(
@@ -113,17 +101,22 @@ function buildSw8Header(
   ].join('-');
 }
 
+export interface RequestCollectorHandle {
+  drainHistogram(): void;
+}
+
 export function installRequestCollector(
   adapter: PlatformAdapter,
   queue: RingQueue,
   options: ResolvedOptions,
-): void {
+): RequestCollectorHandle {
   const collectorUrl = options.collector.replace(/\/+$/, '');
   const traceCollectorUrl = options.traceCollector.replace(/\/+$/, '');
   const urlGroupRules = options.request.urlGroupRules;
   const tracingEnabled = options.enable.tracing;
   const sampleRate = options.tracing.sampleRate;
   const urlBlacklist = options.tracing.urlBlacklist;
+  const histogram = new HistogramAggregator();
 
   adapter.interceptRequest((originalRequest, opts) => {
     if ((collectorUrl && opts.url.startsWith(collectorUrl)) ||
@@ -156,8 +149,7 @@ export function installRequestCollector(
           const endTime = Date.now();
           const duration = endTime - startTime;
 
-          const metrics = buildRequestMetrics(method, statusCode, duration, opts.url, urlGroupRules, endTime);
-          queue.push({ kind: 'metric', time: now(), payload: metrics });
+          histogram.record(buildAttrs(method, statusCode, opts.url, urlGroupRules), duration);
 
           if (statusCode >= 400) {
             queue.push({
@@ -205,8 +197,7 @@ export function installRequestCollector(
           const endTime = Date.now();
           const duration = endTime - startTime;
 
-          const metrics = buildRequestMetrics(method, 0, duration, opts.url, urlGroupRules, endTime);
-          queue.push({ kind: 'metric', time: now(), payload: metrics });
+          histogram.record(buildAttrs(method, 0, opts.url, urlGroupRules), duration);
           queue.push({
             kind: 'log', time: now(),
             payload: buildAjaxErrorLog(method, opts.url, 0, errMsg),
@@ -248,4 +239,14 @@ export function installRequestCollector(
   });
 
   debug('request collector installed', tracingEnabled ? '(tracing on)' : '(metrics only)');
+
+  return {
+    drainHistogram() {
+      if (histogram.isEmpty()) return;
+      const metric = histogram.drain('miniprogram.request.duration', 'ms', Date.now());
+      if (metric) {
+        queue.push({ kind: 'metric', time: now(), payload: [metric] });
+      }
+    },
+  };
 }
