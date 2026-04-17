@@ -88,7 +88,7 @@ make build
 npm version "$RELEASE_VERSION" --no-git-tag-version
 git add package.json package-lock.json
 git commit -m "release: v${RELEASE_VERSION}"
-git tag "v${RELEASE_VERSION}"
+git tag -a "v${RELEASE_VERSION}" -m "release: v${RELEASE_VERSION}"
 
 echo ""
 echo "=== Tagged v${RELEASE_VERSION} ==="
@@ -104,3 +104,6 @@ echo ""
 echo "Next steps:"
 echo "  git push origin main --follow-tags"
 echo "  # GHA will publish v${RELEASE_VERSION} to npm on tag push"
+echo ""
+echo "Or push tag explicitly:"
+echo "  git push origin main && git push origin v${RELEASE_VERSION}"
