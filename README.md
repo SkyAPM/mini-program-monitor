@@ -129,6 +129,11 @@ OTLP resource attributes identify the service:
 - Apache SkyWalking OAP ≥ 10.x (with OTLP HTTP receiver)
 - Any OTLP-compatible backend (OTel Collector, Grafana, etc.)
 
+## What the SDK emits
+
+- [docs/SIGNALS.md](./docs/SIGNALS.md) — every metric name, log attribute, and trace-segment field the SDK produces, with the OTel semantic conventions each uses.
+- [docs/SAMPLES.md](./docs/SAMPLES.md) — concrete OTLP + SkyWalking payloads for each signal.
+
 ## Changelog
 
 See [CHANGES.md](./CHANGES.md) for per-version release notes.

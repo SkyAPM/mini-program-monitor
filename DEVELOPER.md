@@ -77,6 +77,8 @@ request collector → kind:'segment' → SW POST /v3/segments (when tracing enab
 
 All events go through the same RingQueue → Scheduler → Exporter pipeline. The composite exporter dispatches OTLP (metrics+logs) and SW trace (segments) in parallel.
 
+For the full per-signal enumeration (attributes, semantic conventions, sample payloads) see [docs/SIGNALS.md](./docs/SIGNALS.md) and [docs/SAMPLES.md](./docs/SAMPLES.md).
+
 ### OTLP wire format
 
 The SDK posts OTLP to (default protobuf, `Content-Type: application/x-protobuf`; JSON on `encoding: 'json'`):
