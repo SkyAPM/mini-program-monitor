@@ -50,11 +50,30 @@ message Histogram {
   repeated HistogramDataPoint data_points = 1;
   int32 aggregation_temporality = 2;
 }
+message NumberDataPoint {
+  fixed64 start_time_unix_nano = 2;
+  fixed64 time_unix_nano = 3;
+  oneof value {
+    double as_double = 4;
+    sfixed64 as_int = 6;
+  }
+  repeated KeyValue attributes = 7;
+}
+message Gauge {
+  repeated NumberDataPoint data_points = 1;
+}
+message Sum {
+  repeated NumberDataPoint data_points = 1;
+  int32 aggregation_temporality = 2;
+  bool is_monotonic = 3;
+}
 message Metric {
   string name = 1;
   string description = 2;
   string unit = 3;
   oneof data {
+    Gauge gauge = 5;
+    Sum sum = 7;
     Histogram histogram = 9;
   }
 }
@@ -113,6 +132,44 @@ describe('OTLP proto encoder', () => {
     expect(lr.severityText).toBe('ERROR');
     expect(lr.body.stringValue).toBe('hello world');
     expect(lr.attributes[0]).toEqual({ key: 'exception.type', value: { stringValue: 'ajax' } });
+  });
+
+  it('encodes a gauge metric roundtrippable via protobufjs', () => {
+    const req: ExportMetricsServiceRequest = {
+      resourceMetrics: [{
+        resource: { attributes: [] },
+        scopeMetrics: [{
+          scope: { name: 'mpm', version: '0.2.0' },
+          metrics: [{
+            name: 'miniprogram.app_launch.duration',
+            unit: 'ms',
+            gauge: {
+              dataPoints: [{
+                asInt: '1200',
+                timeUnixNano: '1700000000000000000',
+                attributes: [{ key: 'miniprogram.page.path', value: { stringValue: 'pages/index/index' } }],
+              }],
+            },
+          }],
+        }],
+      }],
+    };
+
+    const bytes = encodeMetricsRequest(req);
+    const decoded = MetricsReq.decode(bytes) as unknown as {
+      resourceMetrics: Array<{
+        scopeMetrics: Array<{
+          metrics: Array<{
+            name: string;
+            gauge: { dataPoints: Array<{ asInt: unknown; attributes: Array<{ key: string; value: { stringValue: string } }> }> };
+          }>;
+        }>;
+      }>;
+    };
+    const m = decoded.resourceMetrics[0].scopeMetrics[0].metrics[0];
+    expect(m.name).toBe('miniprogram.app_launch.duration');
+    expect(String(m.gauge.dataPoints[0].asInt)).toBe('1200');
+    expect(m.gauge.dataPoints[0].attributes[0].key).toBe('miniprogram.page.path');
   });
 
   it('encodes a histogram metric roundtrippable via protobufjs', () => {

@@ -25,23 +25,26 @@ cd example-wx && npm run relink
 
 ## Local backend setup
 
-Before opening the example, start the e2e infrastructure:
+Before opening the example, start the e2e infrastructure from the repo root:
 
 ```bash
-cd ../e2e && docker compose up -d
+make mock-backend-up
 ```
 
-This starts:
+This starts two containers:
 
 | Container | Port | Purpose |
 |---|---|---|
 | **OTel Collector** | `:4318` | Receives OTLP metrics + logs |
 | **mock-collector** | `:12801` | Receives `/v3/segments` (trace segments) |
-| **SkyWalking UI** | `:8080` | Dashboard |
+
+Stop them again with `make mock-backend-down`.
 
 The example app sends:
 - OTLP logs + metrics → `http://127.0.0.1:4318` (`collector`)
 - Trace segments → `http://127.0.0.1:12801` (`traceCollector`)
+
+For the full SkyWalking OAP + UI stack (optional, not needed for this example), use `make oap-up` / `make oap-down`.
 
 ## Open in WeChat Developer Tools
 

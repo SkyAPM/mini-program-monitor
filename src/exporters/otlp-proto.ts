@@ -6,6 +6,7 @@ import type {
   OtlpLogRecord,
   OtlpMetric,
   OtlpHistogramDataPoint,
+  OtlpNumberDataPoint,
   ExportLogsServiceRequest,
   ExportMetricsServiceRequest,
 } from '../types/otlp';
@@ -54,6 +55,18 @@ function encodeLogRecord(w: ProtoWriter, lr: OtlpLogRecord): void {
   }
 }
 
+function encodeNumberDataPoint(w: ProtoWriter, dp: OtlpNumberDataPoint): void {
+  writeFixed64String(w, 3, dp.timeUnixNano);
+  if (dp.asDouble !== undefined) writeDouble(w, 4, dp.asDouble);
+  else if (dp.asInt !== undefined) {
+    w.tag(6, WT_I64);
+    w.fixed64FromString(dp.asInt);
+  }
+  if (dp.attributes) {
+    for (const a of dp.attributes) writeSubmessage(w, 7, (sub) => encodeKeyValue(sub, a));
+  }
+}
+
 function encodeHistogramDataPoint(w: ProtoWriter, dp: OtlpHistogramDataPoint): void {
   writeFixed64String(w, 3, dp.timeUnixNano);
   w.tag(4, WT_I64);
@@ -70,7 +83,24 @@ function encodeMetric(w: ProtoWriter, m: OtlpMetric): void {
   writeString(w, 1, m.name);
   writeString(w, 2, m.description);
   writeString(w, 3, m.unit);
-  if (m.histogram) {
+  if (m.gauge) {
+    writeSubmessage(w, 5, (sub) => {
+      for (const dp of m.gauge!.dataPoints) {
+        writeSubmessage(sub, 1, (ddp) => encodeNumberDataPoint(ddp, dp));
+      }
+    });
+  } else if (m.sum) {
+    writeSubmessage(w, 7, (sub) => {
+      for (const dp of m.sum!.dataPoints) {
+        writeSubmessage(sub, 1, (ddp) => encodeNumberDataPoint(ddp, dp));
+      }
+      writeInt32(sub, 2, m.sum!.aggregationTemporality);
+      if (m.sum!.isMonotonic) {
+        sub.tag(3, 0);
+        sub.varint(1);
+      }
+    });
+  } else if (m.histogram) {
     writeSubmessage(w, 9, (sub) => {
       for (const dp of m.histogram!.dataPoints) {
         writeSubmessage(sub, 1, (ddp) => encodeHistogramDataPoint(ddp, dp));

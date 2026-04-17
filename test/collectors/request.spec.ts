@@ -154,6 +154,26 @@ describe('request collector', () => {
     expect(attrs.find((a) => a.key === 'http.request.method')?.value.stringValue).toBe('UPLOAD');
   });
 
+  it('propagates wx.request return value (RequestTask) to caller', () => {
+    const nativeTask = { abort: () => {}, onHeadersReceived: () => {} };
+    const wxAny = (globalThis as unknown as { wx: Record<string, unknown> }).wx;
+    wxAny.request = vi.fn(() => nativeTask);
+
+    setup();
+    const returned = (wxAny as unknown as { request: (o: Record<string, unknown>) => unknown }).request({
+      url: 'https://api.example.com/a', method: 'GET', header: {}, success: () => {}, fail: () => {},
+    });
+    expect(returned).toBe(nativeTask);
+  });
+
+  it('skips only known OTLP endpoints, not other paths on the same host', () => {
+    const { q, handle } = setup({ collector: 'http://oap:4318' });
+    callWxRequest('http://oap:4318/api/users', 'GET', 200);
+    handle.drainHistogram();
+    const metric = q.drain().find((e) => e.kind === 'metric');
+    expect(metric).toBeDefined();
+  });
+
   it('emits error log when download fails with 4xx', () => {
     const downloadMock = vi.fn();
     const wx = (globalThis as unknown as { wx: { downloadFile: unknown } }).wx;

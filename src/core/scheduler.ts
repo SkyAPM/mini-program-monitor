@@ -47,7 +47,8 @@ export class Scheduler {
     try {
       await this.exporter.export(events);
     } catch (err) {
-      warn('exporter failed', err);
+      warn('exporter failed, re-queueing', events.length, 'events', err);
+      for (const e of events) this.queue.push(e);
     }
   }
 }

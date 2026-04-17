@@ -111,9 +111,10 @@ export function createAlipayAdapter(): PlatformAdapter {
           onFail: (msg) =>
             reqOpts.fail?.({ errorMessage: msg }),
         };
+        let task: unknown;
         wrapper(
           (opts) => {
-            originalMy({
+            task = originalMy({
               url: opts.url,
               method: opts.method,
               data: opts.data,
@@ -124,6 +125,7 @@ export function createAlipayAdapter(): PlatformAdapter {
           },
           adapted,
         );
+        return task as ReturnType<typeof my.request>;
       }) as typeof my.request;
     },
 
@@ -143,9 +145,10 @@ export function createAlipayAdapter(): PlatformAdapter {
             }),
           onFail: (msg) => dlOpts.fail?.({ errorMessage: msg }),
         };
+        let task: unknown;
         wrapper(
           (opts) => {
-            originalDl({
+            task = originalDl({
               url: opts.url,
               header: opts.headers,
               success: (res) => opts.onSuccess(res.statusCode ?? 200, { apFilePath: res.apFilePath, tempFilePath: res.tempFilePath }, {}),
@@ -154,6 +157,7 @@ export function createAlipayAdapter(): PlatformAdapter {
           },
           adapted,
         );
+        return task as ReturnType<typeof my.downloadFile>;
       }) as typeof my.downloadFile;
     },
 
@@ -170,9 +174,10 @@ export function createAlipayAdapter(): PlatformAdapter {
             upOpts.success?.({ statusCode: code, data: typeof data === 'string' ? data : '' }),
           onFail: (msg) => upOpts.fail?.({ errorMessage: msg }),
         };
+        let task: unknown;
         wrapper(
           (opts) => {
-            originalUp({
+            task = originalUp({
               url: opts.url,
               filePath: upOpts.filePath,
               fileName: upOpts.fileName,
@@ -185,6 +190,7 @@ export function createAlipayAdapter(): PlatformAdapter {
           },
           adapted,
         );
+        return task as ReturnType<typeof my.uploadFile>;
       }) as typeof my.uploadFile;
     },
 

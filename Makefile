@@ -65,40 +65,27 @@ oap-down:
 
 e2e: build mock-backend-up
 	@echo "=== WeChat OTLP ==="
-	node e2e/harness/run.mjs
+	cd e2e && COLLECTOR_URL=http://127.0.0.1:4318 node harness/run.mjs
 	@echo "=== Alipay OTLP ==="
-	node e2e/harness/run-alipay.mjs
-	@echo "=== Tracing ==="
-	node e2e/harness/run-tracing.mjs
+	cd e2e && COLLECTOR_URL=http://127.0.0.1:4318 node harness/run-alipay.mjs
+	@echo "=== WeChat tracing ==="
+	cd e2e && COLLECTOR_URL=http://127.0.0.1:12801 node harness/run-tracing.mjs
+	@echo "=== Alipay tracing ==="
+	cd e2e && COLLECTOR_URL=http://127.0.0.1:12801 node harness/run-alipay-tracing.mjs
 	@sleep 5
-	@echo "=== Verify OTLP ==="
-	COMPOSE_DIR=e2e node e2e/verify/check-otlp.mjs
-	@echo "=== Verify Traces ==="
-	MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node e2e/verify/check-traces.mjs
+	@echo "=== Verify WeChat OTLP ==="
+	cd e2e && node verify/check-otlp-wechat.mjs
+	@echo "=== Verify Alipay OTLP ==="
+	cd e2e && node verify/check-otlp-alipay.mjs
+	@echo "=== Verify WeChat traces ==="
+	cd e2e && MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node verify/check-traces.mjs
+	@echo "=== Verify Alipay traces ==="
+	cd e2e && MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node verify/check-traces-alipay.mjs
 
-# ── Verify ──
-#
-# check-otlp: reads OTel Collector debug logs and verifies:
-#   - miniprogram.app_launch.duration metric exists
-#   - miniprogram.first_render.duration metric exists
-#   - miniprogram.first_paint.time metric exists
-#   - miniprogram.request.duration metric exists
-#   - Error log with severityNumber=17 (ERROR) exists
-#   - Error log body contains the exception message
-#   - Error log has exception.type attribute
-#   - Resource attribute service.name matches expected value
-#   - Resource attribute miniprogram.platform = wechat or alipay
-#
-# check-traces: reads mock-collector /receiveData and verifies:
-#   - Segment contains the expected service name
-#   - Span peer matches the target domain (e.g. httpbin.org)
-#   - Span layer = Http
-#   - Span type = Exit
-#   - Span has http.method tag
-#   - http.method tag value = GET
+# ── Peek at local e2e state ──
 
 check-otlp:
-	@docker logs otel-collector 2>&1 | grep -E "Name:|Value:|SeverityText:|Body:|service.name:|miniprogram" || echo "(no OTLP data yet — click buttons in the example app first)"
+	@docker logs otel-collector 2>&1 | grep -E "Name:|Value:|SeverityText:|Body:|service.name:|miniprogram" || echo "(no OTLP data yet — run 'make e2e' or exercise the example app first)"
 
 check-traces:
 	@curl -sS http://127.0.0.1:12801/receiveData || echo "(mock-collector not reachable — run 'make mock-backend-up' first)"

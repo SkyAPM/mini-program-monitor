@@ -33,4 +33,18 @@ describe('resolveOptions', () => {
     expect(o.enable.error).toBe(true);
     expect(o.maxQueue).toBe(50);
   });
+
+  it('auto-detects platform from my global when wx is absent', () => {
+    const g = globalThis as Record<string, unknown>;
+    const savedWx = g.wx;
+    delete g.wx;
+    g.my = { request: () => {} };
+    try {
+      const o = resolveOptions({ service: 'svc' });
+      expect(o.platform).toBe('alipay');
+    } finally {
+      g.wx = savedWx;
+      delete g.my;
+    }
+  });
 });

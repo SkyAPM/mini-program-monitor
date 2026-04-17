@@ -70,9 +70,10 @@ export function createWechatAdapter(): PlatformAdapter {
           onFail: (msg) =>
             reqOpts.fail?.({ errMsg: msg } as WechatMiniprogram.GeneralCallbackResult),
         };
+        let task: WechatMiniprogram.RequestTask | undefined;
         wrapper(
           (opts) => {
-            originalWx({
+            task = originalWx({
               url: opts.url,
               method: opts.method as WechatMiniprogram.RequestOption['method'],
               data: opts.data as WechatMiniprogram.IAnyObject,
@@ -83,6 +84,7 @@ export function createWechatAdapter(): PlatformAdapter {
           },
           adapted,
         );
+        return task as WechatMiniprogram.RequestTask;
       }) as typeof wx.request;
     },
 
@@ -103,9 +105,10 @@ export function createWechatAdapter(): PlatformAdapter {
           onFail: (msg) =>
             dlOpts.fail?.({ errMsg: msg } as WechatMiniprogram.GeneralCallbackResult),
         };
+        let task: WechatMiniprogram.DownloadTask | undefined;
         wrapper(
           (opts) => {
-            originalDl({
+            task = originalDl({
               url: opts.url,
               header: opts.headers,
               success: (res) => opts.onSuccess(res.statusCode, { tempFilePath: res.tempFilePath, filePath: res.filePath }, {}),
@@ -114,7 +117,7 @@ export function createWechatAdapter(): PlatformAdapter {
           },
           adapted,
         );
-        return {} as WechatMiniprogram.DownloadTask;
+        return task as WechatMiniprogram.DownloadTask;
       }) as typeof wx.downloadFile;
     },
 
@@ -135,9 +138,10 @@ export function createWechatAdapter(): PlatformAdapter {
           onFail: (msg) =>
             upOpts.fail?.({ errMsg: msg } as WechatMiniprogram.GeneralCallbackResult),
         };
+        let task: WechatMiniprogram.UploadTask | undefined;
         wrapper(
           (opts) => {
-            originalUp({
+            task = originalUp({
               url: opts.url,
               filePath: upOpts.filePath,
               name: upOpts.name,
@@ -149,7 +153,7 @@ export function createWechatAdapter(): PlatformAdapter {
           },
           adapted,
         );
-        return {} as WechatMiniprogram.UploadTask;
+        return task as WechatMiniprogram.UploadTask;
       }) as typeof wx.uploadFile;
     },
 

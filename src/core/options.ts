@@ -1,4 +1,5 @@
 import type { MonitorOptions, EnableFlags, TracingOptions, RequestOptions, OtlpEncoding } from '../types/options';
+import { detectPlatformName } from '../adapters/detect';
 
 export interface ResolvedOptions {
   service: string;
@@ -26,7 +27,7 @@ export function resolveOptions(opts: MonitorOptions): ResolvedOptions {
     serviceInstance: opts.serviceInstance ?? autoInstance(),
     collector: opts.collector ?? '',
     traceCollector: opts.traceCollector ?? opts.collector ?? '',
-    platform: opts.platform ?? 'wechat',
+    platform: opts.platform ?? detectPlatformName() ?? 'wechat',
     enable: {
       error: opts.enable?.error ?? true,
       perf: opts.enable?.perf ?? true,

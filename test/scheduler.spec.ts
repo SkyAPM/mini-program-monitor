@@ -33,4 +33,18 @@ describe('Scheduler', () => {
     const s = new Scheduler(q, exporter, 1000);
     await expect(s.flush()).resolves.toBeUndefined();
   });
+
+  it('re-queues events when exporter rejects (transient network failure)', async () => {
+    const q = new RingQueue(10);
+    q.push({ kind: 'log', time: 1, payload: 'a' });
+    q.push({ kind: 'log', time: 2, payload: 'b' });
+    const exporter = {
+      export: vi.fn(() => Promise.reject(new Error('network'))),
+    };
+    const s = new Scheduler(q, exporter, 1000);
+    await s.flush();
+    expect(q.size()).toBe(2);
+    const drained = q.drain();
+    expect(drained.map((e) => e.payload)).toEqual(['a', 'b']);
+  });
 });

@@ -120,14 +120,17 @@ export function installRequestCollector(
   const urlBlacklist = options.tracing.urlBlacklist;
   const histogram = new HistogramAggregator();
 
+  const selfEndpoints: string[] = [];
+  if (collectorUrl) selfEndpoints.push(`${collectorUrl}/v1/logs`, `${collectorUrl}/v1/metrics`);
+  if (traceCollectorUrl) selfEndpoints.push(`${traceCollectorUrl}/v3/segments`);
+
   function instrument(
     originalCall: (opts: AdapterRequestOpts) => void,
     opts: AdapterRequestOpts,
     methodOverride?: string,
   ): void {
-    if ((collectorUrl && opts.url.startsWith(collectorUrl)) ||
-        (traceCollectorUrl && opts.url.startsWith(traceCollectorUrl))) {
-      return originalCall(opts);
+    for (const ep of selfEndpoints) {
+      if (opts.url.startsWith(ep)) return originalCall(opts);
     }
 
     const method = (methodOverride ?? opts.method ?? 'GET').toUpperCase();
