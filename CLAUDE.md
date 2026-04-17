@@ -16,6 +16,7 @@ A monitoring SDK for WeChat and Alipay mini-programs, reporting to Apache SkyWal
 6. **The SDK must never crash the host mini-program.** Every collector entry point and every exporter call is wrapped in try/catch. A failing exporter logs and drops events; it never throws into user code.
 7. **Don't instrument our own transport.** The request collector must skip the configured `collector` URL or it will infinite-loop.
 8. **No comments explaining what code does.** Only comments for non-obvious *why*. Identifiers should carry the meaning.
+9. **Always run `make typecheck` and `make test` before pushing.** Never push code that fails typecheck or tests.
 
 ## Repo layout
 
