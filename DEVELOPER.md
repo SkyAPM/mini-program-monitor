@@ -132,10 +132,14 @@ Verify scripts (grep OTel Collector debug logs for the expected OTLP fields):
 
 ## Release process
 
-1. Update [CHANGES.md](./CHANGES.md) with the new version's entries.
-2. `./scripts/release.sh <patch|minor>` (updates `package.json`, creates an annotated tag).
-3. `git push --follow-tags`.
-4. CI builds + publishes to npm (trusted publishing, requires npm ≥ 11.5.1).
+1. Update [CHANGES.md](./CHANGES.md) with the new version's entries under a `## vX.Y.Z` heading. Entries must be finalized before tagging — the release workflow copies the matching section verbatim into the GitHub Release page, it is not edited at tag time.
+2. `make release` (wraps `scripts/release.sh`): bumps `package.json`, creates the `vX.Y.Z` annotated tag, and advances to the next `X.Y+1.0-dev` on `main`.
+3. `git push origin main --follow-tags` (or `git push origin main && git push origin vX.Y.Z`).
+4. The [`Release`](./.github/workflows/release.yml) workflow triggers on the `vX.Y.Z` tag and:
+   - runs `make build` + `make test`,
+   - extracts the `## vX.Y.Z` section from `CHANGES.md` into release notes,
+   - publishes to npm with provenance (trusted publishing, npm ≥ 11.5.1),
+   - creates the GitHub Release page with those notes attached.
 
 ## Changelog
 

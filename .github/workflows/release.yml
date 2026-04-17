@@ -8,8 +8,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      id-token: write
+      contents: write   # create GitHub Release
+      id-token: write   # npm trusted publishing
     steps:
       - uses: actions/checkout@v4
 
@@ -29,4 +29,29 @@ jobs:
 
       - run: make test
 
+      - name: Extract release notes from CHANGES.md
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v v="$VERSION" '
+            $0 ~ "^## v"v"( |$)" { found=1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGES.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error file=CHANGES.md::no section found for v${VERSION}"
+            exit 1
+          fi
+          echo "=== release notes (v${VERSION}) ==="
+          cat release-notes.md
+          echo "==================================="
+
       - run: npm publish --access public --provenance
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file release-notes.md
