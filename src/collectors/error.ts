@@ -1,4 +1,4 @@
-import { _global } from '../shared/global';
+import { currentPagePath } from '../shared/page';
 import type { RingQueue } from '../core/queue';
 import type { ResolvedOptions } from '../core/options';
 import type { PlatformAdapter } from '../adapters/types';
@@ -6,18 +6,6 @@ import type { OtlpLogRecord, OtlpKeyValue } from '../types/otlp';
 import { warn } from '../shared/log';
 import { now } from '../shared/time';
 
-function currentPagePath(): string {
-  try {
-    const g = (_global) as { getCurrentPages?: () => Array<{ route?: string }> };
-    const pages = g.getCurrentPages?.();
-    if (pages && pages.length > 0) {
-      return pages[pages.length - 1]?.route ?? 'unknown';
-    }
-  } catch {
-    // ignored
-  }
-  return 'unknown';
-}
 
 function toNanos(ms: number): string {
   return ms + '000000';
@@ -52,9 +40,14 @@ export function installErrorCollector(
     adapter.onError((stack) => {
       try {
         const text = typeof stack === 'string' ? stack : String(stack ?? '');
-        const nl = text.indexOf('\n');
-        const message = nl === -1 ? text : text.slice(0, nl);
-        const rest = nl === -1 ? '' : text.slice(nl + 1);
+        const lines = text.split('\n');
+        let message = lines[0] ?? 'unknown error';
+        let rest = lines.slice(1).join('\n');
+        // WeChat wraps errors as "MiniProgramError\nError: actual message\n  at ..."
+        if (message === 'MiniProgramError' && lines.length > 1) {
+          message = lines[1].replace(/^Error:\s*/, '');
+          rest = lines.slice(2).join('\n');
+        }
         const page = currentPagePath();
         queue.push({ kind: 'log', time: now(), payload: buildLogRecord(message, 'js', rest, page) });
       } catch (err) {

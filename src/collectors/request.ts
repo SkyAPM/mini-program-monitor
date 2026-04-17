@@ -1,4 +1,4 @@
-import { _global } from '../shared/global';
+import { currentPagePath } from '../shared/page';
 import type { RingQueue } from '../core/queue';
 import type { ResolvedOptions } from '../core/options';
 import type { PlatformAdapter } from '../adapters/types';
@@ -15,18 +15,6 @@ function toNanos(ms: number): string {
   return ms + '000000';
 }
 
-function currentPagePath(): string {
-  try {
-    const g = (_global) as { getCurrentPages?: () => Array<{ route?: string }> };
-    const pages = g.getCurrentPages?.();
-    if (pages && pages.length > 0) {
-      return pages[pages.length - 1]?.route ?? 'unknown';
-    }
-  } catch {
-    // ignored
-  }
-  return 'unknown';
-}
 
 function extractDomain(url: string): string {
   try {

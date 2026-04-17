@@ -48,6 +48,15 @@ describe('error collector', () => {
     expect(attrs['miniprogram.page.path']).toBe('pages/index/index');
   });
 
+  it('unwraps WeChat MiniProgramError wrapper to get real message', () => {
+    const q = setup();
+    onErrorCb!('MiniProgramError\nError: demo: synchronous throw\n    at pages/index/index.js:7:11');
+    const log = q.drain()[0].payload as OtlpLogRecord;
+    expect(log.body.stringValue).toBe('demo: synchronous throw');
+    const attrs = log.attributes!.reduce((m, a) => { m[a.key] = a.value.stringValue; return m; }, {} as Record<string, string | undefined>);
+    expect(attrs['exception.stacktrace']).toBe('    at pages/index/index.js:7:11');
+  });
+
   it('emits exception.type=promise for onUnhandledRejection', () => {
     const q = setup();
     onRejectionCb!({ reason: new Error('network down') });
