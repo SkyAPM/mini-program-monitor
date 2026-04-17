@@ -24,17 +24,18 @@ npm test
 ```
 src/
   index.ts            public API: init, record, flush, shutdown
-  core/               options, queue, scheduler, sampler, resource builder
+  core/               options, queue, scheduler (with preFlush hooks), sampler, histogram, resource builder
   adapters/           platform abstraction: wechat.ts, alipay.ts, detect.ts, types.ts
-  collectors/         error (OTLP logs), perf (OTLP metrics), request (OTLP metrics + tracing)
-  exporters/          otlp-http (JSON), sw-trace (/v3/segments), composite, console
-  shared/             log, time, base64 helpers
+  collectors/         error (OTLP logs), perf (OTLP metrics), request (histogram + downloadFile/uploadFile + tracing)
+  exporters/          otlp-http (proto + json), otlp-proto (encoder), proto-writer (wire format),
+                      sw-trace (/v3/segments), composite, console
+  shared/             log, time, base64, page, global helpers
   vendor/skywalking/  uuid.ts, constant.ts (vendored from skywalking-client-js)
-  types/              options, events, OTLP JSON wire types, SW segment types
-test/                 vitest unit tests with wx/my mocks (73 tests, 15 files)
-example-wx/              WeChat mini-program for manual testing
+  types/              options, events, OTLP wire types, SW segment types
+test/                 vitest unit tests with wx/my mocks
+example-wx/           WeChat mini-program for manual testing
 example-alipay/       Alipay mini-program for manual testing
-e2e/                  docker-compose + harnesses + verify scripts
+e2e/                  per-platform YAMLs + harnesses + verify scripts
 ```
 
 ## Scripts
@@ -78,47 +79,36 @@ All events go through the same RingQueue → Scheduler → Exporter pipeline. Th
 
 ### OTLP wire format
 
-The SDK posts OTLP JSON (proto3 JSON mapping, `Content-Type: application/json`) to:
+The SDK posts OTLP to (default protobuf, `Content-Type: application/x-protobuf`; JSON on `encoding: 'json'`):
 - `POST {collector}/v1/logs` — `ExportLogsServiceRequest`
 - `POST {collector}/v1/metrics` — `ExportMetricsServiceRequest`
 
+Proto bytes are produced by a hand-rolled, zero-dep encoder in [src/exporters/proto-writer.ts](src/exporters/proto-writer.ts) and [src/exporters/otlp-proto.ts](src/exporters/otlp-proto.ts). `fixed64` fields (timestamps, histogram counts) are derived from their decimal-string representation via long division so no BigInt is required.
+
 SW trace segments are posted as JSON arrays to:
 - `POST {collector}/v3/segments` — `SegmentObject[]`
+
+### Request metric shape
+
+`miniprogram.request.duration` is a **DELTA histogram** with explicit bounds `[10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000]` ms. An in-memory aggregator ([src/core/histogram.ts](src/core/histogram.ts)) groups samples by attribute tuple (`http.request.method`, `http.response.status_code`, `server.address`, `miniprogram.page.path`, optional `url.path.group`). The `Scheduler` runs registered `onPreFlush` hooks before each flush and on app hide, so the pending aggregator is drained into the queue before persistence. `http.request.method` is the real HTTP verb for `wx.request`/`my.request`, and `DOWNLOAD`/`UPLOAD` for `wx.downloadFile`/`my.downloadFile`/`wx.uploadFile`/`my.uploadFile`.
 
 ## How testing works
 
 ### Layer 1 — unit tests (CI)
 
-73 tests across 15 files. Covers: adapters (wechat/alipay/detect), collectors (error/perf/request with and without tracing), exporters (otlp-http), core (queue/scheduler/options), persistence, and full integration (init→collect→flush→verify).
+Vitest across `test/` — run `make test` (or `npm test`). Covers: adapters (wechat/alipay/detect), collectors (error/perf/request with and without tracing), exporters (otlp-http with encoding option, proto writer, proto encoder roundtrip via protobufjs dev-dep), core (queue/scheduler/options/histogram), persistence, and full integration (init→collect→flush→verify).
 
 ### Layer 2 — e2e (CI)
 
-Docker compose brings up:
-- **OTel Collector** — receives OTLP metrics + logs, debug output for verification
-- **mock-collector** (skywalking-agent-test-tool) — receives `/v3/segments`, exposes `/receiveData` YAML
-- **OAP + BanyanDB** — kept for future OAP OTLP HTTP integration
+Split into two matrix jobs in `.github/workflows/e2e.yml`, one per platform, each driven by its own YAML:
+- `e2e/e2e-wechat.yaml` — runs `harness/run.mjs` (OTLP) + `harness/run-tracing.mjs` (sw8 segments)
+- `e2e/e2e-alipay.yaml` — runs `harness/run-alipay.mjs` (OTLP) + `harness/run-alipay-tracing.mjs` (sw8 segments)
 
-Three harnesses:
-- `run.mjs` — WeChat adapter → OTLP (error + perf + request metrics)
-- `run-alipay.mjs` — Alipay adapter → OTLP (error + request metrics, lifecycle perf)
-- `run-tracing.mjs` — WeChat adapter with tracing enabled → sw8 + segments
+Each job starts a standalone **OTel Collector** (port 4318, debug exporter) via `docker run`, then the infra-e2e-driven **mock-collector** (port 12801, skywalking-agent-test-tool) from `docker-compose.yml` to receive `/v3/segments`.
 
-Verify scripts:
-- `check-otlp.mjs` — 13 checks against OTel Collector debug logs
-- `check-traces.mjs` — 6 checks against mock-collector `/receiveData`
-
-```bash
-cd e2e
-docker compose up -d
-(cd .. && npm run build)
-node harness/run.mjs
-node harness/run-alipay.mjs
-node harness/run-tracing.mjs
-sleep 5
-COMPOSE_DIR=. node verify/check-otlp.mjs
-MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node verify/check-traces.mjs
-docker compose down
-```
+Verify scripts (grep OTel Collector debug logs for the expected OTLP fields):
+- `check-otlp-wechat.mjs` / `check-otlp-alipay.mjs` — per-platform assertions including histogram shape
+- `check-traces.mjs` / `check-traces-alipay.mjs` — per-platform assertions on mock-collector `/receiveData`
 
 ### Layer 3 — manual in WeChat/Alipay simulator
 
@@ -142,19 +132,11 @@ docker compose down
 
 ## Release process
 
-1. Update `CHANGELOG.md`.
-2. `npm version <patch|minor>`.
+1. Update [CHANGES.md](./CHANGES.md) with the new version's entries.
+2. `./scripts/release.sh <patch|minor>` (updates `package.json`, creates an annotated tag).
 3. `git push --follow-tags`.
-4. CI builds + publishes via `NPM_TOKEN`.
-5. Before v0.1.0: delete local `legacy-v0` tag (`git tag -d legacy-v0`).
+4. CI builds + publishes to npm (trusted publishing, requires npm ≥ 11.5.1).
 
-## Roadmap
+## Changelog
 
-- **M1–M3** — skeleton, error collector, perf collector
-- **M4** — OTLP refactor: platform adapters + OTLP HTTP/JSON exporter
-- **M5** — Alipay perf fallback (lifecycle-based timing)
-- **M6** — Request metrics collector
-- **M7** — Distributed tracing: sw8 injection + SW segment exporter
-- **M8** — Storage-backed queue persistence + onAppHide flush
-- **M9** — Example apps + Alipay e2e + trace validation via mock-collector
-- **M10** — v0.1.0 release ← *next*
+Per-version release notes live in [CHANGES.md](./CHANGES.md).

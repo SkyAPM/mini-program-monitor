@@ -2,15 +2,16 @@
 
 Monitoring agent for WeChat (微信) and Alipay (支付宝) Mini Programs, reporting to [Apache SkyWalking](https://skywalking.apache.org/) via OTLP and SkyWalking native protocols.
 
-> **Status: pre-alpha.** Active development. APIs are unstable until v0.1.0.
+> **Status: v0.1.0 released on npm, v0.2.x in development.**
 
 ## What you get
 
 - **Error tracking** — JS errors, unhandled promise rejections, page-not-found events. Reported as OTLP logs with OTel semantic conventions (`exception.type`, `exception.stacktrace`).
 - **Performance metrics** — app launch, first render, first paint, route navigation, script execution, sub-package load. Reported as OTLP gauge metrics (`miniprogram.app_launch.duration`, etc.).
-- **Request metrics** — `wx.request`/`my.request` duration and status by domain. Failed requests (4xx/5xx/timeout) also emit error logs with `exception.type: ajax`.
+- **Request metrics** — `wx.request`/`my.request`, plus `downloadFile`/`uploadFile`, reported as an OTLP delta histogram (`miniprogram.request.duration`) bucketed per flush interval. Failed requests (4xx/5xx/timeout) also emit error logs with `exception.type: ajax`.
 - **Distributed tracing** *(opt-in)* — `sw8` header propagation across outgoing requests. Reported as SkyWalking `SegmentObject` to `/v3/segments`. Enable with `enable: { tracing: true }`.
 - **Queue persistence** — unsent events are saved to storage on app hide and restored on next launch.
+- **OTLP wire format** — protobuf by default (`application/x-protobuf`), JSON available via `encoding: 'json'`. No runtime dependencies.
 
 ## Supported platforms
 
@@ -93,23 +94,26 @@ init({
   },
 
   // Transport
-  maxQueue: 200,       // default 200, ring buffer drop-oldest
-  flushInterval: 5000, // default 5000ms
+  maxQueue: 200,        // default 200, ring buffer drop-oldest
+  flushInterval: 5000,  // default 5000ms
+  encoding: 'proto',    // default 'proto' | 'json' — OTLP wire format
 
-  debug: false,        // default false
+  debug: false,         // default false
 });
 ```
 
 ## Data flow
 
 ```
-Mini-program SDK              Backend (Apache SkyWalking OAP)
-────────────────              ─────────────────────────────
-Error logs     ──→ OTLP JSON ──→ POST /v1/logs     ──→ LAL rules ──→ Log storage
-Perf metrics   ──→ OTLP JSON ──→ POST /v1/metrics  ──→ MAL rules ──→ Metric storage
-Request metrics ──→ OTLP JSON ──→ POST /v1/metrics  ──→ MAL rules ──→ Metric storage
-Trace segments ──→ SW native ──→ POST /v3/segments  ──→ Trace storage + topology
+Mini-program SDK               Backend (Apache SkyWalking OAP)
+────────────────               ─────────────────────────────
+Error logs      ──→ OTLP proto ──→ POST /v1/logs     ──→ LAL rules ──→ Log storage
+Perf metrics    ──→ OTLP proto ──→ POST /v1/metrics  ──→ MAL rules ──→ Metric storage
+Request metrics ──→ OTLP proto ──→ POST /v1/metrics  ──→ MAL rules ──→ Metric storage
+Trace segments  ──→ SW native  ──→ POST /v3/segments ──→ Trace storage + topology
 ```
+
+OTLP body encoding defaults to protobuf (`application/x-protobuf`). Pass `encoding: 'json'` to switch to JSON for debugging.
 
 OTLP resource attributes identify the service:
 
@@ -126,6 +130,10 @@ OTLP resource attributes identify the service:
 - Alipay base library ≥ 2.0
 - Apache SkyWalking OAP ≥ 10.x (with OTLP HTTP receiver)
 - Any OTLP-compatible backend (OTel Collector, Grafana, etc.)
+
+## Changelog
+
+See [CHANGES.md](./CHANGES.md) for per-version release notes.
 
 ## License
 
