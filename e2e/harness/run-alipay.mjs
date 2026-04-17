@@ -9,9 +9,12 @@ import { fireError } from './fake-my.mjs';
 // Patch my.request to use Node fetch
 globalThis.my.request = async ({ url, method, data, headers, success, fail }) => {
   try {
+    const body = data == null ? undefined
+      : (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) ? data
+      : JSON.stringify(data);
     const res = await fetch(url, {
       method: method ?? 'GET',
-      body: data != null ? JSON.stringify(data) : undefined,
+      body,
       headers,
     });
     const text = await res.text();

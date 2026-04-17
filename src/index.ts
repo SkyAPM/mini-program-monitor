@@ -36,6 +36,7 @@ export function init(opts: MonitorOptions): void {
         resource: buildResource(o),
         scope: buildScope(),
         adapter,
+        encoding: o.encoding,
       }),
     ];
     if (o.enable.tracing && o.traceCollector) {

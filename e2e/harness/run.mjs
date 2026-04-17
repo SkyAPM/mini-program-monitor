@@ -10,9 +10,12 @@ import { fireError, firePerfEntries } from './fake-wx.mjs';
 // Patch wx.request to use Node's global fetch
 globalThis.wx.request = async ({ url, method, data, header, success, fail }) => {
   try {
+    const body = data == null ? undefined
+      : (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) ? data
+      : JSON.stringify(data);
     const res = await fetch(url, {
       method,
-      body: data != null ? JSON.stringify(data) : undefined,
+      body,
       headers: header,
     });
     const text = await res.text();

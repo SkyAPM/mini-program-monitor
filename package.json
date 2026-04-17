@@ -29,6 +29,7 @@
   "devDependencies": {
     "@swc/core": "^1.15.26",
     "@types/wechat-miniprogram": "^3.4.0",
+    "protobufjs": "^8.0.1",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "vitest": "^1.5.0"

@@ -34,6 +34,7 @@ function createExporter() {
     resource: buildResource(opts),
     scope: buildScope(),
     adapter,
+    encoding: 'json',
   });
 }
 

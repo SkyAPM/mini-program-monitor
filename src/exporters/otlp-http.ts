@@ -1,6 +1,7 @@
 import type { Exporter } from './types';
 import type { MonitorEvent } from '../types/events';
 import type { PlatformAdapter } from '../adapters/types';
+import type { OtlpEncoding } from '../types/options';
 import type {
   OtlpResource,
   OtlpInstrumentationScope,
@@ -10,12 +11,14 @@ import type {
   ExportLogsServiceRequest,
 } from '../types/otlp';
 import { debug } from '../shared/log';
+import { encodeLogsRequest, encodeMetricsRequest } from './otlp-proto';
 
 export interface OtlpHttpExporterOptions {
   collector: string;
   resource: OtlpResource;
   scope: OtlpInstrumentationScope;
   adapter: PlatformAdapter;
+  encoding?: OtlpEncoding;
 }
 
 export class OtlpHttpExporter implements Exporter {
@@ -23,12 +26,14 @@ export class OtlpHttpExporter implements Exporter {
   private readonly resource: OtlpResource;
   private readonly scope: OtlpInstrumentationScope;
   private readonly adapter: PlatformAdapter;
+  private readonly encoding: OtlpEncoding;
 
   constructor(opts: OtlpHttpExporterOptions) {
     this.collector = opts.collector.replace(/\/+$/, '');
     this.resource = opts.resource;
     this.scope = opts.scope;
     this.adapter = opts.adapter;
+    this.encoding = opts.encoding ?? 'proto';
   }
 
   getCollectorUrl(): string {
@@ -56,7 +61,8 @@ export class OtlpHttpExporter implements Exporter {
           scopeLogs: [{ scope: this.scope, logRecords }],
         }],
       };
-      posts.push(this.post('/v1/logs', body));
+      const data = this.encoding === 'proto' ? encodeLogsRequest(body).buffer : body;
+      posts.push(this.post('/v1/logs', data));
     }
     if (metrics.length > 0) {
       const body: ExportMetricsServiceRequest = {
@@ -65,20 +71,22 @@ export class OtlpHttpExporter implements Exporter {
           scopeMetrics: [{ scope: this.scope, metrics }],
         }],
       };
-      posts.push(this.post('/v1/metrics', body));
+      const data = this.encoding === 'proto' ? encodeMetricsRequest(body).buffer : body;
+      posts.push(this.post('/v1/metrics', data));
     }
     await Promise.all(posts);
   }
 
   private post(path: string, data: unknown): Promise<void> {
     const url = `${this.collector}${path}`;
+    const contentType = this.encoding === 'proto' ? 'application/x-protobuf' : 'application/json';
     return new Promise<void>((resolve, reject) => {
       try {
         this.adapter.request({
           url,
           method: 'POST',
           data,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': contentType },
           onSuccess: (statusCode) => {
             if (statusCode >= 200 && statusCode < 300) {
               debug('otlp exporter', url, '→', statusCode);

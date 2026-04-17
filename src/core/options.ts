@@ -1,4 +1,4 @@
-import type { MonitorOptions, EnableFlags, TracingOptions, RequestOptions } from '../types/options';
+import type { MonitorOptions, EnableFlags, TracingOptions, RequestOptions, OtlpEncoding } from '../types/options';
 
 export interface ResolvedOptions {
   service: string;
@@ -12,6 +12,7 @@ export interface ResolvedOptions {
   request: Required<RequestOptions>;
   maxQueue: number;
   flushInterval: number;
+  encoding: OtlpEncoding;
   debug: boolean;
 }
 
@@ -41,6 +42,7 @@ export function resolveOptions(opts: MonitorOptions): ResolvedOptions {
     },
     maxQueue: opts.maxQueue ?? 200,
     flushInterval: opts.flushInterval ?? 5000,
+    encoding: opts.encoding ?? 'proto',
     debug: opts.debug ?? false,
   };
 }

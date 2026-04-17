@@ -36,6 +36,7 @@ describe('integration: init → collect → flush → verify OTLP', () => {
       service: 'integ-test',
       collector: 'http://otel:4318',
       flushInterval: 60_000,
+      encoding: 'json',
     });
 
     onErrorCb!('ReferenceError: foo is not defined\n    at bar.js:5');
@@ -62,6 +63,7 @@ describe('integration: init → collect → flush → verify OTLP', () => {
       service: 'integ-test',
       collector: 'http://otel:4318',
       flushInterval: 60_000,
+      encoding: 'json',
     });
 
     perfObserverCb!({

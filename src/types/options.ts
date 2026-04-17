@@ -14,6 +14,8 @@ export interface RequestOptions {
   urlGroupRules?: Record<string, RegExp>;
 }
 
+export type OtlpEncoding = 'proto' | 'json';
+
 export interface MonitorOptions {
   service: string;
   serviceVersion?: string;
@@ -26,5 +28,6 @@ export interface MonitorOptions {
   request?: RequestOptions;
   maxQueue?: number;
   flushInterval?: number;
+  encoding?: OtlpEncoding;
   debug?: boolean;
 }
