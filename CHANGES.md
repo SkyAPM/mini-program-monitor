@@ -15,9 +15,20 @@ SDK-side feature work and correctness fixes on top of v0.1.0. No breaking API ch
 
 ### Fixed
 
+- **Wrapped `wx.request`/`downloadFile`/`uploadFile` no longer drop the native task.** The monkey-patched globals now return the real `RequestTask`/`DownloadTask`/`UploadTask`, so host-app code calling `.abort()`, `onProgressUpdate(...)`, or `onHeadersReceived(...)` keeps working after the SDK is enabled. Same fix on the Alipay side.
+- **Proto encoder now handles gauge and sum.** The v0.2 proto exporter only wrote histogram metrics, so every perf gauge (`miniprogram.app_launch.duration`, `first_render.duration`, `first_paint.time`, …) was silently dropped under the default `encoding: 'proto'`. Gauge + Sum + NumberDataPoint encoders added, guarded by a protobufjs-based roundtrip test.
+- **Platform auto-detection now actually runs.** `resolveOptions` used to hardcode `platform` to `'wechat'` when unset, so `detectPlatform` was always fed a hint and never probed `wx` vs `my`. On Alipay, omitting `platform: 'alipay'` would instantiate the WeChat adapter and fail. Detection is now the default.
+- **Transient exporter failures no longer discard queued telemetry.** `Scheduler.flush` drained the queue before the POST, so a brief network error lost events forever (and they couldn't be recovered by app-hide persistence). On exporter rejection the events are re-queued, so the next flush tick retries.
+- **Self-instrumentation skip is now endpoint-scoped.** The request collector previously skipped any URL starting with the configured collector root, which quietly excluded ordinary app traffic sharing that host. It now skips only the SDK's own endpoints (`/v1/logs`, `/v1/metrics`, `/v3/segments`).
 - **Histogram data lost on app hide.** The `onAppHide` handler drained the queue directly and skipped `preFlush` hooks, so any request durations accumulated since the last flush were lost when the app was suspended. The handler now calls `Scheduler.collectPending()` which runs hooks then drains.
 - **Alipay `getCurrentPages` was resolved off `_global`.** Alipay injects `getCurrentPages` into module scope rather than on the global, so the page-path helper returned `unknown`. Moved to `declare const getCurrentPages` so TS and the runtime both see it.
 - **WeChat `MiniProgramError` wrapping.** Error strings of the shape `MiniProgramError\nError: real message` now unwrap to the inner message instead of reporting `MiniProgramError` as the exception text.
+
+### Test hardening
+
+- Integration tests exercise the default proto path end-to-end (decode via protobufjs), with a dedicated opt-in test covering `encoding: 'json'`. Previously every integration case passed `encoding: 'json'` and the default proto pipeline was untested.
+- Options tests now split "apply defaults" from platform detection, and cover both the `wx`-present and `my`-only cases so a regression to a hardcoded platform default is caught.
+- Request collector tests assert that the native `RequestTask`/`DownloadTask`/`UploadTask` is returned to the caller on every path, including the collector-URL skip path.
 
 ### CI / infra
 

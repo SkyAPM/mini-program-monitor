@@ -6,9 +6,10 @@ import { createWechatAdapter } from '../../src/adapters/wechat';
 import type { OtlpMetric, OtlpLogRecord } from '../../src/types/otlp';
 
 let originalRequestMock: ReturnType<typeof vi.fn>;
+const sentinelTask = { abort: () => {}, onHeadersReceived: () => {} };
 
 beforeEach(() => {
-  originalRequestMock = vi.fn();
+  originalRequestMock = vi.fn((_opts: Record<string, unknown>): unknown => sentinelTask);
   const wxAny = (globalThis as unknown as { wx: Record<string, unknown> }).wx;
   wxAny.request = originalRequestMock;
 });
@@ -28,25 +29,29 @@ function setup(overrides?: { collector?: string; urlGroupRules?: Record<string, 
   return { q, handle };
 }
 
-function callWxRequest(url: string, method: string, statusCode: number) {
-  const wx = (globalThis as unknown as { wx: { request: (opts: Record<string, unknown>) => void } }).wx;
-  wx.request({ url, method, header: {}, success: () => {}, fail: () => {} });
+function callWxRequest(url: string, method: string, statusCode: number): unknown {
+  const wx = (globalThis as unknown as { wx: { request: (opts: Record<string, unknown>) => unknown } }).wx;
+  const task = wx.request({ url, method, header: {}, success: () => {}, fail: () => {} });
   const call = originalRequestMock.mock.calls[originalRequestMock.mock.calls.length - 1][0];
   call.success({ statusCode, data: {}, header: {} });
+  return task;
 }
 
-function callWxRequestFail(url: string, method: string) {
-  const wx = (globalThis as unknown as { wx: { request: (opts: Record<string, unknown>) => void } }).wx;
-  wx.request({ url, method, header: {}, success: () => {}, fail: () => {} });
+function callWxRequestFail(url: string, method: string): unknown {
+  const wx = (globalThis as unknown as { wx: { request: (opts: Record<string, unknown>) => unknown } }).wx;
+  const task = wx.request({ url, method, header: {}, success: () => {}, fail: () => {} });
   const call = originalRequestMock.mock.calls[originalRequestMock.mock.calls.length - 1][0];
   call.fail({ errMsg: 'timeout' });
+  return task;
 }
 
 describe('request collector', () => {
-  it('aggregates request durations into histogram on drain', () => {
+  it('aggregates request durations into histogram on drain and returns the native task', () => {
     const { q, handle } = setup();
-    callWxRequest('https://api.example.com/a', 'GET', 200);
-    callWxRequest('https://api.example.com/b', 'GET', 200);
+    const task1 = callWxRequest('https://api.example.com/a', 'GET', 200);
+    const task2 = callWxRequest('https://api.example.com/b', 'GET', 200);
+    expect(task1).toBe(sentinelTask);
+    expect(task2).toBe(sentinelTask);
     expect(q.drain().filter((e) => e.kind === 'metric')).toHaveLength(0);
 
     handle.drainHistogram();
@@ -80,9 +85,10 @@ describe('request collector', () => {
     expect(metric[0].histogram!.dataPoints[0].count).toBe('1');
   });
 
-  it('skips instrumentation for collector URL (loop prevention)', () => {
+  it('skips instrumentation for collector endpoint URLs (loop prevention) but still returns task', () => {
     const { q, handle } = setup({ collector: 'http://oap:4318' });
-    callWxRequest('http://oap:4318/v1/metrics', 'POST', 200);
+    const task = callWxRequest('http://oap:4318/v1/metrics', 'POST', 200);
+    expect(task).toBe(sentinelTask);
     handle.drainHistogram();
     expect(q.size()).toBe(0);
   });
@@ -117,16 +123,18 @@ describe('request collector', () => {
     expect(q.size()).toBe(0);
   });
 
-  it('records download duration with DOWNLOAD method label', () => {
-    const downloadMock = vi.fn();
+  it('records download duration with DOWNLOAD method label and returns DownloadTask', () => {
+    const dlTask = { abort: () => {}, onProgressUpdate: () => {}, offProgressUpdate: () => {} };
+    const downloadMock = vi.fn((_opts: Record<string, unknown>): unknown => dlTask);
     const wx = (globalThis as unknown as { wx: { downloadFile: unknown } }).wx;
     wx.downloadFile = downloadMock;
 
     const { q, handle } = setup();
-    (wx as unknown as { downloadFile: (o: Record<string, unknown>) => void }).downloadFile({
+    const task = (wx as unknown as { downloadFile: (o: Record<string, unknown>) => unknown }).downloadFile({
       url: 'https://cdn.example.com/file.png', header: {}, success: () => {}, fail: () => {},
     });
-    const call = downloadMock.mock.calls[0][0];
+    expect(task).toBe(dlTask);
+    const call = downloadMock.mock.calls[0]![0] as { success: (r: Record<string, unknown>) => void };
     call.success({ statusCode: 200, tempFilePath: '/tmp/a.png', header: {} });
 
     handle.drainHistogram();
@@ -135,17 +143,19 @@ describe('request collector', () => {
     expect(attrs.find((a) => a.key === 'http.request.method')?.value.stringValue).toBe('DOWNLOAD');
   });
 
-  it('records upload duration with UPLOAD method label', () => {
-    const uploadMock = vi.fn();
+  it('records upload duration with UPLOAD method label and returns UploadTask', () => {
+    const upTask = { abort: () => {}, onProgressUpdate: () => {}, offProgressUpdate: () => {} };
+    const uploadMock = vi.fn((_opts: Record<string, unknown>): unknown => upTask);
     const wx = (globalThis as unknown as { wx: { uploadFile: unknown } }).wx;
     wx.uploadFile = uploadMock;
 
     const { q, handle } = setup();
-    (wx as unknown as { uploadFile: (o: Record<string, unknown>) => void }).uploadFile({
+    const task = (wx as unknown as { uploadFile: (o: Record<string, unknown>) => unknown }).uploadFile({
       url: 'https://api.example.com/upload', filePath: '/tmp/a.png', name: 'file',
       header: {}, success: () => {}, fail: () => {},
     });
-    const call = uploadMock.mock.calls[0][0];
+    expect(task).toBe(upTask);
+    const call = uploadMock.mock.calls[0]![0] as { success: (r: Record<string, unknown>) => void };
     call.success({ statusCode: 201, data: '{}', header: {} });
 
     handle.drainHistogram();
@@ -157,7 +167,7 @@ describe('request collector', () => {
   it('propagates wx.request return value (RequestTask) to caller', () => {
     const nativeTask = { abort: () => {}, onHeadersReceived: () => {} };
     const wxAny = (globalThis as unknown as { wx: Record<string, unknown> }).wx;
-    wxAny.request = vi.fn(() => nativeTask);
+    wxAny.request = vi.fn((_opts: Record<string, unknown>): unknown => nativeTask);
 
     setup();
     const returned = (wxAny as unknown as { request: (o: Record<string, unknown>) => unknown }).request({

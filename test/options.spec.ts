@@ -13,11 +13,31 @@ describe('resolveOptions', () => {
     expect(o.flushInterval).toBe(5000);
     expect(o.debug).toBe(false);
     expect(o.serviceInstance).toMatch(/^mp-/);
-    expect(o.platform).toBe('wechat');
+    expect(o.encoding).toBe('proto');
     expect(o.enable.error).toBe(true);
     expect(o.enable.perf).toBe(true);
     expect(o.enable.request).toBe(true);
     expect(o.enable.tracing).toBe(false);
+  });
+
+  it('auto-detects platform from wx global (setup.ts supplies wx)', () => {
+    const g = globalThis as Record<string, unknown>;
+    delete g.my;
+    const o = resolveOptions({ service: 'svc' });
+    expect(o.platform).toBe('wechat');
+  });
+
+  it('falls back to wechat when neither wx nor my is present', () => {
+    const g = globalThis as Record<string, unknown>;
+    const savedWx = g.wx;
+    delete g.wx;
+    delete g.my;
+    try {
+      const o = resolveOptions({ service: 'svc' });
+      expect(o.platform).toBe('wechat');
+    } finally {
+      g.wx = savedWx;
+    }
   });
 
   it('honors overrides', () => {
