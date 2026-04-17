@@ -2,6 +2,12 @@
 
 Per-version release notes for `mini-program-monitor`. Newest at the top.
 
+## v0.2.1
+
+Docs-only follow-up to v0.2.0 so the npmjs.com package page reflects the current state.
+
+- Drop the hand-maintained "Status: vX.Y released on npm, vZ.W in development" line from `README.md` — it rotted the moment v0.2.0 went out.
+
 ## v0.2.0
 
 SDK-side feature work and correctness fixes on top of v0.1.0. No breaking API changes at the `init()` level.
