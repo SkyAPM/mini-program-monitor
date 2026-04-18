@@ -28,6 +28,9 @@ release/
 # WeChat Developer Tools per-user state
 project.private.config.json
 
-# example/ local lockfile (dep is file:.. so the lock doesn't travel)
-/example/package-lock.json
+# example/ local lockfiles — only dep is `file:..`, so the lock adds
+# no reproducibility but drifts on every SDK version bump. Regenerated
+# by `npm install` in each example dir.
+/example-wx/package-lock.json
+/example-alipay/package-lock.json
 .captures/
