@@ -108,7 +108,7 @@ Segment shape (SkyWalking native):
 | `spans[0].operationName` | current page path |
 | `spans[0].spanLayer` | `Http` |
 | `spans[0].spanType` | `Exit` |
-| `spans[0].componentId` | Ajax component |
+| `spans[0].componentId` | `10002` on WeChat, `10003` on Alipay (per-platform SkyWalking component IDs; OAP's `component-libraries.yml` registration tracks these values) |
 | `spans[0].peer` | `server.address` (URL host) |
 | `spans[0].isError` | `true` if statusCode ≥ 400, statusCode = 0, or request failed |
 | `spans[0].tags` | `http.method`, `url`, `miniprogram.platform`, and `http.status_code` (success) or `error.message` (fail) |

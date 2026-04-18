@@ -8,7 +8,7 @@ import { warn, debug } from '../shared/log';
 import { now } from '../shared/time';
 import { base64Encode } from '../shared/base64';
 import uuid from '../vendor/skywalking/uuid';
-import { ComponentId, SpanLayer, SpanType } from '../vendor/skywalking/constant';
+import { SpanLayer, SpanType } from '../vendor/skywalking/constant';
 import { shouldSample } from '../core/sampler';
 import { HistogramAggregator } from '../core/histogram';
 
@@ -178,7 +178,7 @@ export function installRequestCollector(
               spanLayer: SpanLayer,
               spanType: SpanType,
               isError: statusCode === 0 || statusCode >= 400,
-              componentId: ComponentId,
+              componentId: adapter.componentId,
               peer,
               tags: [
                 { key: 'http.method', value: method },
@@ -224,7 +224,7 @@ export function installRequestCollector(
               spanLayer: SpanLayer,
               spanType: SpanType,
               isError: true,
-              componentId: ComponentId,
+              componentId: adapter.componentId,
               peer,
               tags: [
                 { key: 'http.method', value: method },

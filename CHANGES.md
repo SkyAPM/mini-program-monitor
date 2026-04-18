@@ -7,6 +7,7 @@ Per-version release notes for `mini-program-monitor`. Newest at the top.
 ### Added
 
 - **`miniprogram.platform` span tag on SkyWalking trace segments.** OTLP logs and metrics already carried `miniprogram.platform` as a resource attribute, but segments (SkyWalking native protocol) had no equivalent — two mini-programs sharing a `service.name` were indistinguishable on the trace side. Every exit span now tags `miniprogram.platform: wechat | alipay` on both success and failure paths.
+- **Per-platform SkyWalking component IDs on exit spans.** Previously every segment used `componentId: 10001` (the vendored "ajax" ID inherited from `skywalking-client-js`). The adapter interface now owns `componentId`: WeChat reports `10002`, Alipay reports `10003`. OAP's `component-libraries.yml` registration will follow; until the target OAP release lands, these IDs render as "N/A" in topology but the tag data is still captured.
 
 ### Docs
 

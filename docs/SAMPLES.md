@@ -211,7 +211,7 @@ POST `/v3/segments` as a JSON array. One object per sampled request:
     "parentSpanId": -1,
     "spanLayer": "Http",
     "spanType": "Exit",
-    "componentId": 10001,
+    "componentId": 10002,
     "peer": "api.example.com",
     "isError": false,
     "tags": [

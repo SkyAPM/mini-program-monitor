@@ -13,6 +13,7 @@ function createFakeAlipayAdapter(): PlatformAdapter {
   onRejectionCb = undefined;
   return {
     name: 'alipay',
+    componentId: 10003,
     request: vi.fn(),
     onError: (cb) => { onErrorCb = cb; return () => {}; },
     onUnhandledRejection: (cb) => { onRejectionCb = cb; return () => {}; },

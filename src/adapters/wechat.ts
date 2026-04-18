@@ -37,6 +37,7 @@ export function createWechatAdapter(): PlatformAdapter {
 
   return {
     name: 'wechat',
+    componentId: 10002,
 
     request(opts: AdapterRequestOpts) {
       wx.request({

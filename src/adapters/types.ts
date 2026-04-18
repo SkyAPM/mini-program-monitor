@@ -40,6 +40,11 @@ export type Uninstall = () => void;
 export interface PlatformAdapter {
   readonly name: 'wechat' | 'alipay';
 
+  // SkyWalking component ID for exit spans this adapter produces.
+  // Reserved per-platform: 10002 = WeChat-MiniProgram, 10003 = Alipay-MiniProgram.
+  // OAP's component-libraries.yml registration tracks these values.
+  readonly componentId: number;
+
   request(opts: AdapterRequestOpts): void;
 
   onError(cb: (msg: string) => void): Uninstall;

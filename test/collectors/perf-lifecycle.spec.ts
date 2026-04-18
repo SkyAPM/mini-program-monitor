@@ -13,6 +13,7 @@ function createFakeAlipayAdapter(): PlatformAdapter {
   pageHooks = {};
   return {
     name: 'alipay',
+    componentId: 10003,
     request: vi.fn(),
     onError: vi.fn(() => () => {}),
     onUnhandledRejection: vi.fn(() => () => {}),

@@ -83,6 +83,7 @@ export function createAlipayAdapter(): PlatformAdapter {
 
   return {
     name: 'alipay',
+    componentId: 10003,
 
     request(opts: AdapterRequestOpts) {
       my.request({
