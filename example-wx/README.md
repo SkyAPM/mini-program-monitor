@@ -68,8 +68,10 @@ For the full SkyWalking OAP + UI stack (optional, not needed for this example), 
 
 Watch OTel Collector logs (metrics + error logs):
 ```bash
-cd ../e2e && docker compose logs -f otel-collector
+docker logs -f otel-collector
 ```
+
+(`otel-collector` is started as a standalone container by `make mock-backend-up`, not via docker compose.)
 
 Check received trace segments:
 ```bash

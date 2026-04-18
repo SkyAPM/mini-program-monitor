@@ -26,7 +26,7 @@ npm install
 |---|---|
 | Throw JS error | `my.onError` fires → OTLP error log |
 | Reject promise | `my.onUnhandledRejection` fires → OTLP error log |
-| my.request | Request to httpbin.org → OTLP request metric |
+| my.request | Request to httpbin.org → OTLP request metric + trace segment (tracing is enabled in [app.js](./app.js)) |
 | Flush now | Drains the queue immediately |
 
 ## Platform differences from WeChat
