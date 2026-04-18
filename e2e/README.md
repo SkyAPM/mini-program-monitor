@@ -30,14 +30,14 @@ make e2e                 # build sim images, bring up backends, run WeChat + Ali
 make mock-backend-down   # stop when done
 ```
 
-Ad-hoc single-scenario run:
+Ad-hoc single-scenario run (from the repo root):
 
 ```bash
 make mock-backend-up
 make sim-run-wechat SCENARIO=error-storm ENCODING=proto
 sleep 5
-node verify/check-otlp-wechat.mjs
-MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node verify/check-traces.mjs
+node e2e/verify/check-otlp-wechat.mjs
+MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node e2e/verify/check-traces.mjs
 make mock-backend-down
 ```
 
