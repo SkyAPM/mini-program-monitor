@@ -2,6 +2,16 @@
 
 Per-version release notes for `mini-program-monitor`. Newest at the top.
 
+## v0.3.0
+
+### Added
+
+- **`miniprogram.platform` span tag on SkyWalking trace segments.** OTLP logs and metrics already carried `miniprogram.platform` as a resource attribute, but segments (SkyWalking native protocol) had no equivalent — two mini-programs sharing a `service.name` were indistinguishable on the trace side. Every exit span now tags `miniprogram.platform: wechat | alipay` on both success and failure paths.
+
+### Docs
+
+- Added [`docs/SIGNALS.md`](./docs/SIGNALS.md) and [`docs/SAMPLES.md`](./docs/SAMPLES.md): every metric name, log type, and trace-segment field the SDK emits, with concrete OTLP + SkyWalking JSON payloads.
+
 ## v0.2.1
 
 Docs-only follow-up to v0.2.0 so the npmjs.com package page reflects the current state.
