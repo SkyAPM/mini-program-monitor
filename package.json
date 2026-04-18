@@ -9,8 +9,10 @@
   "sideEffects": false,
   "files": [
     "dist",
+    "docs",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGES.md"
   ],
   "exports": {
     ".": {

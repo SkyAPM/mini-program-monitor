@@ -152,7 +152,7 @@ ghcr.io/skyapm/mini-program-monitor/sim-wechat:<sha>
 ghcr.io/skyapm/mini-program-monitor/sim-alipay:<sha>
 ```
 
-See [sim/README.md](./sim/README.md) for scenarios (`demo`, `baseline`, `error-storm`, `slow-api`) and env-var knobs.
+See [sim/README.md](https://github.com/SkyAPM/mini-program-monitor/blob/main/sim/README.md) for scenarios (`demo`, `baseline`, `error-storm`, `slow-api`) and env-var knobs.
 
 ## Changelog
 
@@ -164,4 +164,4 @@ Apache 2.0. See [LICENSE](./LICENSE).
 
 ## Contributing
 
-See [DEVELOPER.md](./DEVELOPER.md).
+See [DEVELOPER.md](https://github.com/SkyAPM/mini-program-monitor/blob/main/DEVELOPER.md).
