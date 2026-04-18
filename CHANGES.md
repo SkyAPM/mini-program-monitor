@@ -8,10 +8,12 @@ Per-version release notes for `mini-program-monitor`. Newest at the top.
 
 - **`miniprogram.platform` span tag on SkyWalking trace segments.** OTLP logs and metrics already carried `miniprogram.platform` as a resource attribute, but segments (SkyWalking native protocol) had no equivalent — two mini-programs sharing a `service.name` were indistinguishable on the trace side. Every exit span now tags `miniprogram.platform: wechat | alipay` on both success and failure paths.
 - **Per-platform SkyWalking component IDs on exit spans.** Previously every segment used `componentId: 10001` (the vendored "ajax" ID inherited from `skywalking-client-js`). The adapter interface now owns `componentId`: WeChat reports `10002`, Alipay reports `10003`. OAP's `component-libraries.yml` registration will follow; until the target OAP release lands, these IDs render as "N/A" in topology but the tag data is still captured.
+- **Simulator ecosystem (`sim-wechat`, `sim-alipay`).** Two multi-arch (amd64 + arm64) Docker images published to `ghcr.io/skyapm/mini-program-monitor/sim-{wechat,alipay}:<sha>` drive realistic mini-program telemetry at any OTLP + SkyWalking backend. Three run modes (`loop`, `timed`, `once`), four scenarios (`demo`, `baseline`, `error-storm`, `slow-api`), both encodings. Used for our own CI e2e (a 12-cell `{platform × scenario × encoding}` matrix + a mixed-platforms concurrent job), `make preview` (full OAP + UI + both sims in loop mode for demo browsing), and third-party integration testing. Source under [`sim/`](./sim/); see [`sim/README.md`](./sim/README.md) and [`e2e/README.md`](./e2e/README.md). Replaces the previous harness-script e2e path.
 
 ### Docs
 
-- Added [`docs/SIGNALS.md`](./docs/SIGNALS.md) and [`docs/SAMPLES.md`](./docs/SAMPLES.md): every metric name, log type, and trace-segment field the SDK emits, with concrete OTLP + SkyWalking JSON payloads.
+- Added [`docs/SIGNALS.md`](./docs/SIGNALS.md) and [`docs/SAMPLES.md`](./docs/SAMPLES.md): every metric name, log type, and trace-segment field the SDK emits, with concrete OTLP + SkyWalking JSON payloads. Shapes are verified against real captures from example-wx in WeChat DevTools and example-alipay in Alipay DevTools, so samples reflect actual wire data — real framework stack frames (`WASubContext.js` / `af-appx.worker.min.js`), per-platform `componentId`/`miniprogram.platform`, and the empty-stack quirk of Alipay's `my.onError` on synchronous throws.
+- Fixed semantic drift: `miniprogram.first_paint.time` is a wall-clock epoch-millisecond **timestamp** (it's `PerformanceEntry.startTime`), not a duration like the other `*.duration` gauges. Called out in both the SIGNALS table and as its own SAMPLES example.
 
 ## v0.2.1
 
