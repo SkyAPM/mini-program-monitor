@@ -33,20 +33,31 @@ src/
   vendor/skywalking/  uuid.ts, constant.ts (vendored from skywalking-client-js)
   types/              options, events, OTLP wire types, SW segment types
 test/                 vitest unit tests with wx/my mocks
+docs/                 SIGNALS.md + SAMPLES.md (per-signal wire reference)
 example-wx/           WeChat mini-program for manual testing
 example-alipay/       Alipay mini-program for manual testing
-e2e/                  per-platform YAMLs + harnesses + verify scripts
+sim/                  sim-wechat / sim-alipay — dockerized simulators
+                      that drive realistic telemetry at any OTLP + SW backend
+Dockerfile.sim        single Dockerfile, ARG PLATFORM=wechat|alipay
+e2e/                  compose files (mock-collector, optional OAP),
+                      otel-collector configs, verify scripts
 ```
 
 ## Scripts
 
 | Command | Purpose |
 |---|---|
-| `npm run build` | One-shot build via tsup → `dist/{cjs,esm,d.ts}` |
+| `npm run build` / `make build` | One-shot build via tsup → `dist/{cjs,esm,d.ts}` |
 | `npm run dev` | tsup watch mode |
-| `npm test` | vitest unit tests |
+| `npm test` / `make test` | vitest unit tests |
 | `npm run test:watch` | vitest watch |
-| `npm run typecheck` | `tsc --noEmit` |
+| `npm run typecheck` / `make typecheck` | `tsc --noEmit` |
+| `make mock-backend-up` / `-down` | Bring up/down mock-collector (compose) + OTel Collector (`docker run`) |
+| `make sim-build` | Build `sim-wechat` + `sim-alipay` images locally |
+| `make sim-run-wechat` / `-alipay` | Run a single sim image against `127.0.0.1` backends (`SCENARIO=... ENCODING=...` override) |
+| `make preview` / `make preview-down` | Full OAP + UI + mock-collector + OTel Collector + both sims in loop mode; browse `http://127.0.0.1:8080` |
+| `make e2e` | Build sims + backends, run baseline scenario for both platforms, verify |
+| `make release` | Tag + bump workflow (see Release process) |
 
 ## Architecture
 
@@ -100,19 +111,25 @@ SW trace segments are posted as JSON arrays to:
 
 Vitest across `test/` — run `make test` (or `npm test`). Covers: adapters (wechat/alipay/detect), collectors (error/perf/request with and without tracing), exporters (otlp-http with encoding option, proto writer, proto encoder roundtrip via protobufjs dev-dep), core (queue/scheduler/options/histogram), persistence, and full integration (init→collect→flush→verify).
 
-### Layer 2 — e2e (CI)
+### Layer 2 — e2e (CI, matrix over sim images)
 
-Split into two matrix jobs in `.github/workflows/e2e.yml`, one per platform, each driven by its own YAML:
-- `e2e/e2e-wechat.yaml` — runs `harness/run.mjs` (OTLP) + `harness/run-tracing.mjs` (sw8 segments)
-- `e2e/e2e-alipay.yaml` — runs `harness/run-alipay.mjs` (OTLP) + `harness/run-alipay-tracing.mjs` (sw8 segments)
+[`.github/workflows/e2e.yml`](./.github/workflows/e2e.yml) has two jobs:
 
-Each job starts a standalone **OTel Collector** (port 4318, debug exporter) via `docker run`, then the infra-e2e-driven **mock-collector** (port 12801, skywalking-agent-test-tool) from `docker-compose.yml` to receive `/v3/segments`.
+- **`sim`** — `{platform: [wechat, alipay]} × {scenario: [baseline, error-storm, slow-api]} × {encoding: [proto, json]}` = 12 cells. Each cell builds its `sim-<platform>` image locally from [`Dockerfile.sim`](./Dockerfile.sim), boots a fresh `mock-collector` (compose) + `otel-collector` (`docker run`), runs the sim in `MODE=timed DURATION_MS=20000`, then greps `docker logs otel-collector` and `/receiveData` for the expected payloads.
+- **`mixed-platforms`** — boots both sims concurrently against a shared backend, asserts both `service.name`s + both `miniprogram.platform` tag values land in OTLP + segment data. Catches cross-platform regressions.
 
-Verify scripts (grep OTel Collector debug logs for the expected OTLP fields):
-- `check-otlp-wechat.mjs` / `check-otlp-alipay.mjs` — per-platform assertions including histogram shape
-- `check-traces.mjs` / `check-traces-alipay.mjs` — per-platform assertions on mock-collector `/receiveData`
+Verify scripts under [`e2e/verify/`](./e2e/verify) (grep-based, accept `SERVICE` env overrides):
 
-### Layer 3 — manual in WeChat/Alipay simulator
+- `check-otlp-wechat.mjs` / `check-otlp-alipay.mjs` — OTel Collector debug output, per-platform signal shape + histogram presence.
+- `check-traces.mjs` / `check-traces-alipay.mjs` — mock-collector `/receiveData`, segment shape + `miniprogram.platform` + `componentId` tag.
+
+Multi-arch sim images (`linux/amd64`, `linux/arm64`) are published to GHCR on every push to `main` and on version tags by [`.github/workflows/sim-publish.yml`](./.github/workflows/sim-publish.yml). SHA-tagging policy — no `:latest`, no `:edge` — so third parties and the `make preview` compose file can pin to a specific build. See [`sim/README.md`](./sim/README.md) for sim env vars and scenarios.
+
+### Layer 3 — preview / demo (local, full OAP stack)
+
+`make preview` brings up OAP + UI + mock-collector + OTel Collector (forwarding OTLP into OAP) + both sims in `MODE=loop`. Browse `http://127.0.0.1:8080` to see both services land in topology. `make preview-down` to stop.
+
+### Layer 4 — manual in WeChat/Alipay simulator
 
 - `example-wx/` — WeChat, see [example-wx/README.md](example-wx/README.md)
 - `example-alipay/` — Alipay, see [example-alipay/README.md](example-alipay/README.md)
@@ -128,9 +145,10 @@ Verify scripts (grep OTel Collector debug logs for the expected OTLP fields):
 
 ## Adding a platform adapter
 
-1. Implement `PlatformAdapter` from [src/adapters/types.ts](src/adapters/types.ts).
+1. Implement `PlatformAdapter` from [src/adapters/types.ts](src/adapters/types.ts), including its `componentId` (needs a dedicated value in OAP's `component-libraries.yml` — coordinate upstream before shipping).
 2. Add auto-detection logic in [src/adapters/detect.ts](src/adapters/detect.ts).
-3. Add a mock in [test/setup.ts](test/setup.ts) and a fake for e2e in `e2e/harness/`.
+3. Add a mock in [test/setup.ts](test/setup.ts) and a sim fake under `sim/<platform>/fake-<global>.mjs` + entrypoint + per-scenario fixtures (copy the shape from `sim/wechat/` or `sim/alipay/`).
+4. Add the platform to the e2e matrix in [`.github/workflows/e2e.yml`](./.github/workflows/e2e.yml) and to `sim-publish.yml`.
 
 ## Release process
 

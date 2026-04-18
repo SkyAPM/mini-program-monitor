@@ -1,7 +1,7 @@
 {
   "name": "mini-program-monitor",
   "version": "0.3.0-dev",
-  "description": "WeChat Mini Program monitoring agent for Apache SkyWalking",
+  "description": "WeChat and Alipay Mini Program monitoring agent for Apache SkyWalking",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -49,6 +49,7 @@
   "keywords": [
     "skywalking",
     "wechat",
+    "alipay",
     "miniprogram",
     "monitoring",
     "apm",

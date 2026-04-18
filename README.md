@@ -8,6 +8,7 @@ Monitoring agent for WeChat (微信) and Alipay (支付宝) Mini Programs, repor
 - **Performance metrics** — app launch, first render, first paint, route navigation, script execution, sub-package load. Reported as OTLP gauge metrics (`miniprogram.app_launch.duration`, etc.).
 - **Request metrics** — `wx.request`/`my.request`, plus `downloadFile`/`uploadFile`, reported as an OTLP delta histogram (`miniprogram.request.duration`) bucketed per flush interval. Failed requests (4xx/5xx/timeout) also emit error logs with `exception.type: ajax`.
 - **Distributed tracing** *(opt-in)* — `sw8` header propagation across outgoing requests. Reported as SkyWalking `SegmentObject` to `/v3/segments`. Enable with `enable: { tracing: true }`.
+- **Per-platform distinguishable at the backend** — every signal carries `miniprogram.platform: wechat | alipay` (resource attribute on OTLP, span tag on segments) and each platform has its own SkyWalking component ID (WeChat = 10002, Alipay = 10003). Operators with one WeChat + one Alipay app against the same backend can slice by platform without forcing distinct `service.name`s.
 - **Queue persistence** — unsent events are saved to storage on app hide and restored on next launch.
 - **OTLP wire format** — protobuf by default (`application/x-protobuf`), JSON available via `encoding: 'json'`. No runtime dependencies.
 
@@ -133,6 +134,25 @@ OTLP resource attributes identify the service:
 
 - [docs/SIGNALS.md](./docs/SIGNALS.md) — every metric name, log attribute, and trace-segment field the SDK produces, with the OTel semantic conventions each uses.
 - [docs/SAMPLES.md](./docs/SAMPLES.md) — concrete OTLP + SkyWalking payloads for each signal.
+
+## Preview / demo
+
+Want to see the data in a real SkyWalking UI without wiring a mini-program into DevTools? Clone the repo and run:
+
+```bash
+make preview          # builds sim images, starts OAP + UI + mock-collector + OTel Collector + both sims
+# open http://127.0.0.1:8080, wait ~30 s for topology to populate
+make preview-down
+```
+
+The `sim-wechat` and `sim-alipay` containers drive realistic telemetry (`miniprogram.app_launch.duration`, request histograms, error logs, trace segments) against the running backend. Multi-arch images (`linux/amd64`, `linux/arm64`) are also published to GHCR per SHA — pin to any commit for third-party integration testing:
+
+```
+ghcr.io/skyapm/mini-program-monitor/sim-wechat:<sha>
+ghcr.io/skyapm/mini-program-monitor/sim-alipay:<sha>
+```
+
+See [sim/README.md](./sim/README.md) for scenarios (`demo`, `baseline`, `error-storm`, `slow-api`) and env-var knobs.
 
 ## Changelog
 
