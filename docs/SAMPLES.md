@@ -157,9 +157,11 @@ POST `/v1/logs`:
 }
 ```
 
+Platform-specific quirk: on Alipay, a synchronous throw surfaces through `my.onError` as the error message alone — `exception.stacktrace` ends up empty. Only the error body is useful for grouping. WeChat includes a full `WASubContext.js` / `WAServiceMainContext.js` stack.
+
 ### Promise rejection (`exception.type = promise`)
 
-Same shape; `body` is the rejection reason, `exception.type = "promise"`, `exception.stacktrace` is the `.stack` of the rejection if it was an `Error`.
+Same shape; `body` is the rejection reason, `exception.type = "promise"`, `exception.stacktrace` is the `.stack` of the rejection if it was an `Error`. On WeChat the frames reference `WASubContext.js`; on Alipay they reference `af-appx.worker.min.js`.
 
 ### Page not found (`exception.type = pageNotFound`, WeChat only)
 
@@ -222,6 +224,20 @@ POST `/v3/segments` as a JSON array. One object per sampled request:
     ]
   }]
 }]
+```
+
+The same call on Alipay produces the same shape, differing only in `componentId` and the `miniprogram.platform` tag:
+
+```json
+{
+  "componentId": 10003,
+  "tags": [
+    { "key": "http.method", "value": "POST" },
+    { "key": "url", "value": "https://api.example.com/checkout" },
+    { "key": "http.status_code", "value": "200" },
+    { "key": "miniprogram.platform", "value": "alipay" }
+  ]
+}
 ```
 
 The outgoing request carries an `sw8` header of the form:
