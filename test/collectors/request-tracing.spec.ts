@@ -67,6 +67,8 @@ describe('request collector — tracing', () => {
     expect(seg.spans[0].spanLayer).toBe('Http');
     expect(seg.spans[0].spanType).toBe('Exit');
     expect(seg.spans[0].peer).toBe('api.example.com');
+    const platformTag = seg.spans[0].tags!.find((t) => t.key === 'miniprogram.platform');
+    expect(platformTag?.value).toBe('wechat');
   });
 
   it('does not produce segment when tracing is disabled', () => {

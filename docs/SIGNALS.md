@@ -111,7 +111,7 @@ Segment shape (SkyWalking native):
 | `spans[0].componentId` | Ajax component |
 | `spans[0].peer` | `server.address` (URL host) |
 | `spans[0].isError` | `true` if statusCode ≥ 400, statusCode = 0, or request failed |
-| `spans[0].tags` | `http.method`, `url`, `http.status_code` (success) or `error.message` (fail) |
+| `spans[0].tags` | `http.method`, `url`, `miniprogram.platform`, and `http.status_code` (success) or `error.message` (fail) |
 
 Sampling and URL-blacklist controls:
 - `init.tracing.sampleRate` (default `1.0`)

@@ -21,6 +21,7 @@ assert(data.includes('Http'), 'span layer = Http');
 assert(data.includes('Exit'), 'span type = Exit');
 assert(data.includes('http.method'), 'span tag http.method present');
 assert(data.includes('pages/index/index'), 'span operationName has page path');
+assert(data.includes('miniprogram.platform') && data.includes('alipay'), 'span tag miniprogram.platform = alipay');
 
 if (!ok) { console.error('\n--- raw receiveData ---\n', data); process.exit(1); }
 console.log('[verify-traces] all Alipay trace checks passed');

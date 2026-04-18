@@ -197,7 +197,8 @@ POST `/v3/segments` as a JSON array. One object per sampled request:
     "tags": [
       { "key": "http.method", "value": "POST" },
       { "key": "url", "value": "https://api.example.com/checkout" },
-      { "key": "http.status_code", "value": "200" }
+      { "key": "http.status_code", "value": "200" },
+      { "key": "miniprogram.platform", "value": "wechat" }
     ]
   }]
 }]

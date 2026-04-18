@@ -184,6 +184,7 @@ export function installRequestCollector(
                 { key: 'http.method', value: method },
                 { key: 'url', value: opts.url },
                 { key: 'http.status_code', value: String(statusCode) },
+                { key: 'miniprogram.platform', value: adapter.name },
               ],
             };
             const segment: SegmentObject = {
@@ -229,6 +230,7 @@ export function installRequestCollector(
                 { key: 'http.method', value: method },
                 { key: 'url', value: opts.url },
                 { key: 'error.message', value: errMsg },
+                { key: 'miniprogram.platform', value: adapter.name },
               ],
             };
             const segment: SegmentObject = {

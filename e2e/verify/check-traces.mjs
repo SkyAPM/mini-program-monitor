@@ -30,6 +30,7 @@ assert(data.includes('Exit'), 'span type = Exit');
 assert(data.includes('http.method'), 'span tag http.method present');
 assert(data.includes('GET'), 'span tag http.method value = GET');
 assert(data.includes('pages/index/index'), 'span operationName has page path (not unknown)');
+assert(data.includes('miniprogram.platform') && data.includes('wechat'), 'span tag miniprogram.platform = wechat');
 
 if (!ok) {
   console.error('\n[verify-traces] --- raw receiveData ---');
