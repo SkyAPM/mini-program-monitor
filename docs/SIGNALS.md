@@ -22,7 +22,7 @@ Every OTLP payload (logs + metrics) carries the same resource attributes, built 
 | `service.version` | `v1.2.0` | `init.serviceVersion` (default `v0.0.0`) |
 | `service.instance.id` | `mp-ax91z2pf` | `init.serviceInstance` (auto-generated if unset) |
 | `telemetry.sdk.name` | `mini-program-monitor` | hardcoded |
-| `telemetry.sdk.version` | `0.2.1` | SDK build-time constant |
+| `telemetry.sdk.version` | `<current SDK version>` | SDK build-time constant from `package.json#version` |
 | `miniprogram.platform` | `wechat` or `alipay` | auto-detected, or `init.platform` override |
 
 Instrumentation scope is `{ name: "mini-program-monitor", version: <SDK version> }` on every OTLP batch.

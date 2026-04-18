@@ -16,11 +16,11 @@ Every OTLP payload (logs + metrics) uses this resource and scope. It's shown onc
       { "key": "service.version", "value": { "stringValue": "v1.2.0" } },
       { "key": "service.instance.id", "value": { "stringValue": "mp-ax91z2pf" } },
       { "key": "telemetry.sdk.name", "value": { "stringValue": "mini-program-monitor" } },
-      { "key": "telemetry.sdk.version", "value": { "stringValue": "0.2.1" } },
+      { "key": "telemetry.sdk.version", "value": { "stringValue": "<current SDK version>" } },
       { "key": "miniprogram.platform", "value": { "stringValue": "wechat" } }
     ]
   },
-  "scope": { "name": "mini-program-monitor", "version": "0.2.1" }
+  "scope": { "name": "mini-program-monitor", "version": "<current SDK version>" }
 }
 ```
 
