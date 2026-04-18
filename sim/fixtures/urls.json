@@ -1,0 +1,9 @@
+[
+  { "url": "https://api.example.com/users",         "method": "GET",  "weight": 5, "statusMix": { "200": 0.97, "500": 0.03 }, "latencyMs": [80, 250] },
+  { "url": "https://api.example.com/users/profile", "method": "GET",  "weight": 4, "statusMix": { "200": 0.98, "404": 0.02 }, "latencyMs": [60, 180] },
+  { "url": "https://api.example.com/orders",        "method": "GET",  "weight": 3, "statusMix": { "200": 0.95, "502": 0.05 }, "latencyMs": [120, 400] },
+  { "url": "https://api.example.com/cart",          "method": "POST", "weight": 2, "statusMix": { "200": 0.93, "400": 0.05, "500": 0.02 }, "latencyMs": [90, 300] },
+  { "url": "https://api.example.com/checkout",      "method": "POST", "weight": 1, "statusMix": { "200": 0.90, "500": 0.10 }, "latencyMs": [300, 1200] },
+  { "url": "https://api.example.com/search",        "method": "GET",  "weight": 3, "statusMix": { "200": 0.99, "503": 0.01 }, "latencyMs": [150, 500] },
+  { "url": "https://cdn.example.com/assets/banner.png", "method": "GET", "weight": 2, "statusMix": { "200": 1 }, "latencyMs": [40, 120] }
+]

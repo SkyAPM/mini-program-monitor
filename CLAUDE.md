@@ -38,7 +38,12 @@ src/
 test/                 vitest unit tests with wx/my mocks
 example-wx/              WeChat mini-program for manual testing
 example-alipay/       Alipay mini-program for manual testing
-e2e/                  docker-compose (OTel Collector + mock-collector + OAP) + harnesses + verify
+sim/                  Dockerized simulators (sim-wechat, sim-alipay) — drive realistic telemetry
+  core/               shared env/fixture/trigger/loop orchestrator
+  wechat/, alipay/    per-platform fakes, entrypoints, scenarios
+  fixtures/           placeholder URL/error/system-info data (swap for real captures)
+e2e/                  docker-compose (mock-collector, OAP) + verify scripts + preview compose
+Dockerfile.sim        single Dockerfile, ARG PLATFORM=wechat|alipay
 ```
 
 ## Out of scope for v0.1
@@ -49,19 +54,9 @@ e2e/                  docker-compose (OTel Collector + mock-collector + OAP) + h
 
 ## Testing layers
 
-- **Unit (CI):** vitest + platform mocks in `test/setup.ts`. 73 tests across 15 files.
-- **E2E (CI):** OTel Collector for OTLP verification (13 checks), mock-collector for trace segment verification (6 checks). Both WeChat + Alipay platforms tested.
-- **Manual (local):** `example-wx/` (WeChat) and `example-alipay/` (Alipay) in their respective DevTools.
+- **Unit (CI):** vitest + platform mocks in `test/setup.ts`.
+- **E2E (CI):** matrix of `{platform, scenario, encoding}` runs sim images against OTel Collector + mock-collector. Each cell rebuilds a fresh compose stack — no cross-cell reset logic.
+- **Preview / demo (local):** `make preview` brings up OAP + UI + mock-collector + OTel Collector + both sim containers in loop mode. Browse `http://127.0.0.1:8080`.
+- **Manual (local):** `example-wx/` and `example-alipay/` opened in their DevTools IDEs.
 
-See [DEVELOPER.md](./DEVELOPER.md) for the full dev loop.
-
-## Roadmap
-
-- **M1–M3** — skeleton, error collector, perf collector (browser protocol, since replaced)
-- **M4** — OTLP refactor: platform adapters + OTLP HTTP/JSON exporter + OTel Collector e2e
-- **M5** — Alipay perf fallback (lifecycle-based timing)
-- **M6** — Request metrics collector (always-on, domain-level)
-- **M7** — Distributed tracing: sw8 injection + SW segment exporter (opt-in)
-- **M8** — Storage-backed queue persistence + onAppHide flush
-- **M9** — Example apps (WeChat + Alipay) + Alipay e2e + trace validation via mock-collector
-- **M10** — v0.1.0 release ← *next*
+See [DEVELOPER.md](./DEVELOPER.md) for the full dev loop, [sim/README.md](./sim/README.md) for simulator env vars, and [CHANGES.md](./CHANGES.md) for per-version release notes.

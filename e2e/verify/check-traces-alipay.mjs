@@ -1,4 +1,5 @@
 const MOCK_URL = process.env.MOCK_COLLECTOR_URL ?? 'http://127.0.0.1:12801';
+const SERVICE = process.env.SERVICE ?? 'mini-program-sim-alipay';
 
 let data;
 try {
@@ -15,12 +16,12 @@ function assert(condition, msg) {
   else { console.log(`[verify-traces] PASS: ${msg}`); }
 }
 
-assert(data.includes('alipay-trace-e2e'), 'segment service name = alipay-trace-e2e');
-assert(data.includes('httpbin.org'), 'span peer = httpbin.org');
+assert(data.includes(SERVICE), `segment service name = ${SERVICE}`);
+assert(data.includes('example.com'), 'span peer contains example.com');
 assert(data.includes('Http'), 'span layer = Http');
 assert(data.includes('Exit'), 'span type = Exit');
 assert(data.includes('http.method'), 'span tag http.method present');
-assert(data.includes('pages/index/index'), 'span operationName has page path');
+assert(data.includes('pages/'), 'span operationName has a page path');
 assert(data.includes('miniprogram.platform') && data.includes('alipay'), 'span tag miniprogram.platform = alipay');
 
 if (!ok) { console.error('\n--- raw receiveData ---\n', data); process.exit(1); }

@@ -1,0 +1,19 @@
+{
+  "name": "slow-api",
+  "pages": ["pages/index/index", "pages/search/index", "pages/detail/index"],
+  "navigate": { "everyMs": 12000 },
+  "requests": {
+    "everyMs": 2000,
+    "urls": [
+      { "url": "https://api.example.com/search",   "weight": 5, "statusMix": { "200": 0.95, "504": 0.05 }, "latencyMs": [1500, 6000] },
+      { "url": "https://api.example.com/checkout", "weight": 2, "statusMix": { "200": 0.90, "500": 0.10 }, "latencyMs": [2000, 8000] },
+      { "url": "https://api.example.com/users",    "weight": 3, "statusMix": { "200": 0.99, "500": 0.01 }, "latencyMs": [80, 250] }
+    ]
+  },
+  "errors": {
+    "promise": { "everyMs": 20000 },
+    "manual":  { "everyMs": 60000 }
+  },
+  "perf": { "onNavigate": true, "appLaunch": [1500, 3500], "firstRender": [600, 1500] },
+  "lifecycle": { "hideShowEveryMs": 120000 }
+}

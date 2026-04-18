@@ -1,0 +1,13 @@
+{
+  "name": "demo",
+  "pages": ["pages/index/index", "pages/detail/index", "pages/profile/index", "pages/cart/index"],
+  "navigate": { "everyMs": 8000 },
+  "requests": { "everyMs": 2000 },
+  "errors": {
+    "js":      { "everyMs": 45000 },
+    "promise": { "everyMs": 75000 },
+    "manual":  { "everyMs": 180000 }
+  },
+  "perf": { "onNavigate": true, "appLaunch": [800, 1800], "firstRender": [200, 600] },
+  "lifecycle": { "hideShowEveryMs": 90000 }
+}

@@ -7,13 +7,15 @@ on:
     branches: [main]
 
 jobs:
-  e2e:
+  sim:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
         platform: [wechat, alipay]
+        scenario: [baseline, error-storm, slow-api]
+        encoding: [proto, json]
     steps:
       - uses: actions/checkout@v4
 
@@ -22,32 +24,137 @@ jobs:
           node-version: '20'
           cache: npm
 
-      - name: Install docker-compose v2 standalone binary
-        run: |
-          sudo curl -sSL \
-            https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-x86_64 \
-            -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose version
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-
-      - name: Install skywalking-infra-e2e
-        run: |
-          go install github.com/apache/skywalking-infra-e2e/cmd/e2e@latest
-          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-
       - run: make build
 
-      - name: Run e2e (${{ matrix.platform }})
-        working-directory: e2e
-        run: e2e run -c e2e-${{ matrix.platform }}.yaml
+      - name: Build sim-${{ matrix.platform }} image
+        run: |
+          docker build \
+            --build-arg PLATFORM=${{ matrix.platform }} \
+            -f Dockerfile.sim \
+            -t mini-program-monitor-sim-${{ matrix.platform }}:ci \
+            .
+
+      - name: Start backends (mock-collector + OTel Collector)
+        run: make mock-backend-up
+
+      - name: Wait for OTel Collector
+        run: |
+          for i in $(seq 1 30); do
+            curl -sS -o /dev/null http://127.0.0.1:4318/v1/metrics \
+              -X POST -d '{}' -H 'Content-Type: application/json' 2>/dev/null && exit 0
+            sleep 1
+          done
+          exit 1
+
+      - name: Run simulator (${{ matrix.platform }} / ${{ matrix.scenario }} / ${{ matrix.encoding }})
+        run: |
+          docker run --rm --network host \
+            -e MODE=timed \
+            -e DURATION_MS=20000 \
+            -e SCENARIO=${{ matrix.scenario }} \
+            -e ENCODING=${{ matrix.encoding }} \
+            -e COLLECTOR_URL=http://127.0.0.1:4318 \
+            -e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+            -e DEBUG=true \
+            mini-program-monitor-sim-${{ matrix.platform }}:ci
+
+      - name: Wait for flush settling
+        run: sleep 5
+
+      - name: Verify OTLP
+        run: node e2e/verify/check-otlp-${{ matrix.platform }}.mjs
+
+      - name: Verify trace segments
+        run: |
+          node e2e/verify/check-traces${{ matrix.platform == 'alipay' && '-alipay' || '' }}.mjs
+        env:
+          MOCK_COLLECTOR_URL: http://127.0.0.1:12801
 
       - name: Dump logs on failure
         if: failure()
         run: |
-          docker compose -f e2e/docker-compose.yml ps || true
-          docker compose -f e2e/docker-compose.yml logs mock-collector || true
-          docker logs otel-collector || true
+          echo '---- otel-collector ----'
+          docker logs otel-collector 2>&1 | tail -200 || true
+          echo '---- mock-collector ----'
+          docker compose -f e2e/docker-compose.yml logs mock-collector 2>&1 | tail -50 || true
+          echo '---- mock-collector /receiveData ----'
+          curl -sS http://127.0.0.1:12801/receiveData 2>&1 | head -c 2000 || true
+
+      - name: Tear down backends
+        if: always()
+        run: make mock-backend-down
+
+  mixed-platforms:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - run: make build
+
+      - name: Build both sim images
+        run: |
+          docker build --build-arg PLATFORM=wechat -f Dockerfile.sim -t mini-program-monitor-sim-wechat:ci .
+          docker build --build-arg PLATFORM=alipay -f Dockerfile.sim -t mini-program-monitor-sim-alipay:ci .
+
+      - name: Start backends
+        run: make mock-backend-up
+
+      - name: Wait for OTel Collector
+        run: |
+          for i in $(seq 1 30); do
+            curl -sS -o /dev/null http://127.0.0.1:4318/v1/metrics \
+              -X POST -d '{}' -H 'Content-Type: application/json' 2>/dev/null && exit 0
+            sleep 1
+          done
+          exit 1
+
+      - name: Run both simulators concurrently (MODE=timed, SCENARIO=baseline)
+        run: |
+          docker run --rm --network host \
+            -e MODE=timed -e DURATION_MS=20000 \
+            -e SCENARIO=baseline -e ENCODING=proto \
+            -e COLLECTOR_URL=http://127.0.0.1:4318 \
+            -e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+            mini-program-monitor-sim-wechat:ci &
+          docker run --rm --network host \
+            -e MODE=timed -e DURATION_MS=20000 \
+            -e SCENARIO=baseline -e ENCODING=proto \
+            -e COLLECTOR_URL=http://127.0.0.1:4318 \
+            -e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+            mini-program-monitor-sim-alipay:ci &
+          wait
+
+      - name: Wait for flush settling
+        run: sleep 5
+
+      - name: Verify both services present in OTLP logs
+        run: |
+          logs=$(docker logs otel-collector 2>&1)
+          echo "$logs" | grep -q 'Str(mini-program-sim-wechat)' || { echo 'missing wechat resource'; exit 1; }
+          echo "$logs" | grep -q 'Str(mini-program-sim-alipay)' || { echo 'missing alipay resource'; exit 1; }
+          echo "$logs" | grep -q 'Str(wechat)' || { echo 'missing wechat platform tag'; exit 1; }
+          echo "$logs" | grep -q 'Str(alipay)' || { echo 'missing alipay platform tag'; exit 1; }
+          echo 'mixed-platforms: both services produced OTLP signals'
+
+      - name: Verify both services present in trace segments
+        run: |
+          data=$(curl -sS http://127.0.0.1:12801/receiveData)
+          echo "$data" | grep -q 'mini-program-sim-wechat' || { echo 'missing wechat segments'; exit 1; }
+          echo "$data" | grep -q 'mini-program-sim-alipay' || { echo 'missing alipay segments'; exit 1; }
+          echo 'mixed-platforms: both services produced trace segments'
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          docker logs otel-collector 2>&1 | tail -200 || true
+          curl -sS http://127.0.0.1:12801/receiveData 2>&1 | head -c 2000 || true
+
+      - name: Tear down backends
+        if: always()
+        run: make mock-backend-down

@@ -1,0 +1,21 @@
+{
+  "js": [
+    "TypeError: Cannot read properties of undefined (reading 'id')\n    at pages/detail/index.js:42:18\n    at Object.onLoad (pages/detail/index.js:12:5)",
+    "ReferenceError: user is not defined\n    at pages/profile/index.js:87:21",
+    "RangeError: Maximum call stack size exceeded\n    at pages/index/index.js:104:7",
+    "TypeError: e.target.dataset.item is null\n    at handleTap (pages/list/index.js:55:11)"
+  ],
+  "promise": [
+    "network timeout",
+    "request aborted",
+    "HTTP 500 Internal Server Error",
+    "fetch failed: ECONNRESET",
+    "timeout of 10000ms exceeded"
+  ],
+  "manual": [
+    "checkout flow aborted: payment declined",
+    "user session expired",
+    "feature flag rollout_v2 missing",
+    "cart sync failed after retry"
+  ]
+}

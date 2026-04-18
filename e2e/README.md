@@ -1,62 +1,55 @@
 # E2E testing
 
-End-to-end tests that run the compiled SDK in Node against real backend containers, verifying both WeChat and Alipay platforms.
+End-to-end tests that run the SDK inside Docker sim images against real backend containers, verifying both WeChat and Alipay platforms across multiple scenarios and encodings.
 
 ## Containers
 
 | Container | Image | Port | Purpose |
 |---|---|---|---|
-| `otel-collector` | `otel/opentelemetry-collector-contrib` | 4318 | Receives OTLP metrics + logs, debug output for verification (started via `docker run`, not compose) |
-| `mock-collector` | `ghcr.io/apache/skywalking-agent-test-tool/mock-collector` | 12801 | Receives `/v3/segments`, exposes `/receiveData` YAML for trace validation (via `docker-compose.yml`) |
+| `otel-collector` | `otel/opentelemetry-collector-contrib` | 4318 | OTLP metrics + logs receiver. Debug exporter prints payloads for grep-based verification. |
+| `mock-collector` | `ghcr.io/apache/skywalking-agent-test-tool/mock-collector` | 12801 | SkyWalking `/v3/segments` receiver. Exposes `/receiveData` YAML for trace validation. |
+| `sim-wechat` / `sim-alipay` | built locally from `Dockerfile.sim` | — | SDK under test. Drives telemetry per scenario in `MODE=timed`. |
 
-An optional OAP + BanyanDB + UI stack lives in `docker-compose.oap.yml` (`make oap-up` / `make oap-down`) for manual exploration — it is not part of the default e2e path.
+An optional full OAP + BanyanDB + UI stack lives in `docker-compose.oap.yml` (`make oap-up` / `make oap-down`) for preview/manual exploration. It is not part of the default e2e path.
 
-## Harnesses
+## Verification scripts
 
-| Harness | Platform | What it tests |
-|---|---|---|
-| `run.mjs` | WeChat | Error logs + perf metrics + request metrics via OTLP |
-| `run-alipay.mjs` | Alipay | Error logs + request metrics via OTLP (lifecycle perf, no getPerformance) |
-| `run-tracing.mjs` | WeChat | sw8 header injection + SegmentObject to mock-collector |
-| `run-alipay-tracing.mjs` | Alipay | sw8 header injection + SegmentObject to mock-collector |
-
-## Verification
-
-| Script | Against |
+| Script | Checks |
 |---|---|
-| `check-otlp-wechat.mjs` / `check-otlp-alipay.mjs` | OTel Collector debug logs (per-platform OTLP shape) |
-| `check-traces.mjs` / `check-traces-alipay.mjs` | mock-collector `/receiveData` (per-platform segment shape) |
+| `verify/check-otlp-wechat.mjs` | `docker logs otel-collector` contains expected WeChat-platform OTLP shape. `SERVICE` env overrides the resource assertion. |
+| `verify/check-otlp-alipay.mjs` | Same for Alipay. |
+| `verify/check-traces.mjs` | `/receiveData` on mock-collector contains WeChat trace segments with expected tags. |
+| `verify/check-traces-alipay.mjs` | Same for Alipay. |
+
+All checks are string-grep against accumulated backend state — fine because each CI matrix cell brings up a fresh compose stack.
 
 ## Running locally
 
 ```bash
-# from repo root
-make e2e          # build SDK, start mock-collector + otel-collector, run all harnesses, verify
+make e2e                 # build sim images, bring up backends, run WeChat + Alipay sims, verify
 make mock-backend-down   # stop when done
 ```
 
-Or step by step, from the `e2e/` directory:
+Ad-hoc single-scenario run:
 
 ```bash
-docker compose up -d                                 # mock-collector only
-docker run -d --name otel-collector -p 4318:4318 \
-  -v "$PWD/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml" \
-  otel/opentelemetry-collector-contrib:latest        # otel-collector
-
-(cd .. && npm run build)
-COLLECTOR_URL=http://127.0.0.1:4318  node harness/run.mjs
-COLLECTOR_URL=http://127.0.0.1:4318  node harness/run-alipay.mjs
-COLLECTOR_URL=http://127.0.0.1:12801 node harness/run-tracing.mjs
-COLLECTOR_URL=http://127.0.0.1:12801 node harness/run-alipay-tracing.mjs
+make mock-backend-up
+make sim-run-wechat SCENARIO=error-storm ENCODING=proto
 sleep 5
 node verify/check-otlp-wechat.mjs
-node verify/check-otlp-alipay.mjs
 MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node verify/check-traces.mjs
-MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node verify/check-traces-alipay.mjs
-
-docker rm -f otel-collector && docker compose down
+make mock-backend-down
 ```
 
 ## CI
 
-Runs via [`.github/workflows/e2e.yml`](../.github/workflows/e2e.yml) on every push and PR to `main`. Split into two matrix jobs, one per platform, each driven by `e2e-<platform>.yaml` through the `skywalking-infra-e2e` CLI.
+Runs via [`.github/workflows/e2e.yml`](../.github/workflows/e2e.yml) on every push and PR to `main`:
+
+- **Matrix job (`sim`)** — `{platform} × {scenario} × {encoding}` = 12 cells. Each cell builds the sim image for its platform, starts a fresh backend stack, runs `MODE=timed DURATION_MS=20000`, verifies, tears down.
+- **`mixed-platforms` job** — both sim containers run concurrently against a shared backend; asserts both services appear in OTLP + trace data.
+
+No cross-cell state to reset because every job is a fresh compose up.
+
+## Preview (optional, full OAP stack)
+
+`make preview` brings up OAP + UI + mock-collector + OTel Collector + both sims in `MODE=loop`. Browse [http://127.0.0.1:8080](http://127.0.0.1:8080). Stop with `make preview-down`. See [sim/README.md](../sim/README.md).

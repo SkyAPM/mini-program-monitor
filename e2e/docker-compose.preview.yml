@@ -1,0 +1,55 @@
+# One-command demo stack: full SkyWalking OAP + UI + both simulators.
+#
+#   SIM_IMAGE_TAG=<sha> docker compose \
+#     -f e2e/docker-compose.yml \
+#     -f e2e/docker-compose.oap.yml \
+#     -f e2e/docker-compose.preview.yml \
+#     up -d
+#
+# The Makefile target `make preview` wires this up with SIM_IMAGE_TAG
+# defaulting to the current HEAD commit SHA.
+
+services:
+  otel-collector-preview:
+    image: otel/opentelemetry-collector-contrib:0.150.1
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./otel-collector-preview.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "4318:4318"
+    depends_on:
+      oap:
+        condition: service_healthy
+    networks: [e2e]
+
+  sim-wechat:
+    image: ghcr.io/skyapm/mini-program-monitor/sim-wechat:${SIM_IMAGE_TAG:?SIM_IMAGE_TAG must be set (full commit SHA or version)}
+    environment:
+      MODE: loop
+      SCENARIO: ${SIM_SCENARIO_WECHAT:-demo}
+      ENCODING: ${SIM_ENCODING:-proto}
+      COLLECTOR_URL: http://otel-collector-preview:4318
+      TRACE_COLLECTOR_URL: http://oap:12800
+      SERVICE: miniprogram-wechat-preview
+      DEBUG: "false"
+    depends_on:
+      otel-collector-preview:
+        condition: service_started
+    restart: unless-stopped
+    networks: [e2e]
+
+  sim-alipay:
+    image: ghcr.io/skyapm/mini-program-monitor/sim-alipay:${SIM_IMAGE_TAG:?SIM_IMAGE_TAG must be set (full commit SHA or version)}
+    environment:
+      MODE: loop
+      SCENARIO: ${SIM_SCENARIO_ALIPAY:-demo}
+      ENCODING: ${SIM_ENCODING:-proto}
+      COLLECTOR_URL: http://otel-collector-preview:4318
+      TRACE_COLLECTOR_URL: http://oap:12800
+      SERVICE: miniprogram-alipay-preview
+      DEBUG: "false"
+    depends_on:
+      otel-collector-preview:
+        condition: service_started
+    restart: unless-stopped
+    networks: [e2e]

@@ -1,0 +1,20 @@
+{
+  "name": "error-storm",
+  "pages": ["pages/index/index", "pages/detail/index", "pages/checkout/index"],
+  "navigate": { "everyMs": 6000 },
+  "requests": {
+    "everyMs": 2000,
+    "urls": [
+      { "url": "https://api.example.com/users",  "weight": 3, "statusMix": { "200": 0.70, "500": 0.30 }, "latencyMs": [80, 250] },
+      { "url": "https://api.example.com/orders", "weight": 2, "statusMix": { "200": 0.60, "502": 0.40 }, "latencyMs": [120, 400] },
+      { "url": "https://api.example.com/search", "weight": 1, "statusMix": { "200": 0.80, "503": 0.20 }, "latencyMs": [150, 500] }
+    ]
+  },
+  "errors": {
+    "js":      { "everyMs": 4000 },
+    "promise": { "everyMs": 6000 },
+    "manual":  { "everyMs": 15000 }
+  },
+  "perf": { "onNavigate": true, "appLaunch": [800, 1800], "firstRender": [200, 600] },
+  "lifecycle": { "hideShowEveryMs": 60000 }
+}

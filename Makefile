@@ -19,7 +19,14 @@
         mock-backend-up mock-backend-down \
         check-otlp check-traces \
         oap-up oap-down \
+        sim-build sim-run-wechat sim-run-alipay \
+        preview preview-down \
         e2e release clean
+
+# Resolved lazily so subcommands always see the current HEAD sha.
+SIM_IMAGE_TAG ?= $(shell git rev-parse HEAD)
+SIM_IMAGE_WECHAT = ghcr.io/skyapm/mini-program-monitor/sim-wechat:$(SIM_IMAGE_TAG)
+SIM_IMAGE_ALIPAY = ghcr.io/skyapm/mini-program-monitor/sim-alipay:$(SIM_IMAGE_TAG)
 
 # ── Core ──
 
@@ -63,24 +70,69 @@ oap-up:
 oap-down:
 	cd e2e && docker compose -f docker-compose.yml -f docker-compose.oap.yml down
 
-e2e: build mock-backend-up
-	@echo "=== WeChat OTLP ==="
-	cd e2e && COLLECTOR_URL=http://127.0.0.1:4318 node harness/run.mjs
-	@echo "=== Alipay OTLP ==="
-	cd e2e && COLLECTOR_URL=http://127.0.0.1:4318 node harness/run-alipay.mjs
-	@echo "=== WeChat tracing ==="
-	cd e2e && COLLECTOR_URL=http://127.0.0.1:12801 node harness/run-tracing.mjs
-	@echo "=== Alipay tracing ==="
-	cd e2e && COLLECTOR_URL=http://127.0.0.1:12801 node harness/run-alipay-tracing.mjs
+e2e: sim-build mock-backend-up
+	@sleep 3
+	@echo "=== WeChat sim (baseline / proto) ==="
+	docker run --rm --network host \
+		-e MODE=timed -e DURATION_MS=15000 -e SCENARIO=baseline -e ENCODING=proto \
+		-e COLLECTOR_URL=http://127.0.0.1:4318 -e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+		$(SIM_IMAGE_WECHAT)
 	@sleep 5
-	@echo "=== Verify WeChat OTLP ==="
+	@echo "=== Verify WeChat ==="
 	cd e2e && node verify/check-otlp-wechat.mjs
-	@echo "=== Verify Alipay OTLP ==="
-	cd e2e && node verify/check-otlp-alipay.mjs
-	@echo "=== Verify WeChat traces ==="
 	cd e2e && MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node verify/check-traces.mjs
-	@echo "=== Verify Alipay traces ==="
+	@$(MAKE) mock-backend-down >/dev/null 2>&1; $(MAKE) mock-backend-up >/dev/null 2>&1; sleep 3
+	@echo "=== Alipay sim (baseline / proto) ==="
+	docker run --rm --network host \
+		-e MODE=timed -e DURATION_MS=15000 -e SCENARIO=baseline -e ENCODING=proto \
+		-e COLLECTOR_URL=http://127.0.0.1:4318 -e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+		$(SIM_IMAGE_ALIPAY)
+	@sleep 5
+	@echo "=== Verify Alipay ==="
+	cd e2e && node verify/check-otlp-alipay.mjs
 	cd e2e && MOCK_COLLECTOR_URL=http://127.0.0.1:12801 node verify/check-traces-alipay.mjs
+
+# ── Simulator images ──
+
+sim-build: build
+	docker build --build-arg PLATFORM=wechat -f Dockerfile.sim -t $(SIM_IMAGE_WECHAT) .
+	docker build --build-arg PLATFORM=alipay -f Dockerfile.sim -t $(SIM_IMAGE_ALIPAY) .
+
+sim-run-wechat:
+	docker run --rm --network host \
+		-e MODE=timed -e DURATION_MS=10000 -e SCENARIO=$(or $(SCENARIO),demo) \
+		-e ENCODING=$(or $(ENCODING),proto) \
+		-e COLLECTOR_URL=http://127.0.0.1:4318 \
+		-e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+		-e DEBUG=true \
+		$(SIM_IMAGE_WECHAT)
+
+sim-run-alipay:
+	docker run --rm --network host \
+		-e MODE=timed -e DURATION_MS=10000 -e SCENARIO=$(or $(SCENARIO),demo) \
+		-e ENCODING=$(or $(ENCODING),proto) \
+		-e COLLECTOR_URL=http://127.0.0.1:4318 \
+		-e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+		-e DEBUG=true \
+		$(SIM_IMAGE_ALIPAY)
+
+# ── Preview: full OAP stack + both simulators in loop mode ──
+
+preview: sim-build
+	@echo "Starting OAP + UI + simulators (SIM_IMAGE_TAG=$(SIM_IMAGE_TAG))"
+	cd e2e && SIM_IMAGE_TAG=$(SIM_IMAGE_TAG) docker compose \
+		-f docker-compose.yml \
+		-f docker-compose.oap.yml \
+		-f docker-compose.preview.yml up -d
+	@echo ""
+	@echo "SkyWalking UI: http://127.0.0.1:8080 (data populates in ~30s)"
+	@echo "Stop with: make preview-down"
+
+preview-down:
+	cd e2e && SIM_IMAGE_TAG=$(SIM_IMAGE_TAG) docker compose \
+		-f docker-compose.yml \
+		-f docker-compose.oap.yml \
+		-f docker-compose.preview.yml down
 
 # ── Peek at local e2e state ──
 

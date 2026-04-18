@@ -1,0 +1,30 @@
+ARG NODE_VERSION=20-alpine
+
+FROM node:${NODE_VERSION} AS base
+WORKDIR /app
+RUN addgroup -S sim && adduser -S -G sim sim
+
+FROM base AS sim
+ARG PLATFORM
+RUN test -n "$PLATFORM" && ( [ "$PLATFORM" = "wechat" ] || [ "$PLATFORM" = "alipay" ] ) \
+  || (echo "PLATFORM must be wechat or alipay" && exit 1)
+
+COPY --chown=sim:sim package.json ./
+COPY --chown=sim:sim dist ./dist
+COPY --chown=sim:sim sim ./sim
+
+ENV PLATFORM=$PLATFORM
+ENV MODE=loop
+ENV SCENARIO=demo
+ENV ENCODING=proto
+ENV COLLECTOR_URL=http://127.0.0.1:4318
+ENV TRACE_COLLECTOR_URL=http://127.0.0.1:12801
+
+USER sim
+
+LABEL org.opencontainers.image.source="https://github.com/SkyAPM/mini-program-monitor"
+LABEL org.opencontainers.image.description="Mini-program monitor simulator (platform varies per tag)"
+LABEL org.opencontainers.image.licenses="Apache-2.0"
+
+ENTRYPOINT ["/bin/sh", "-c"]
+CMD ["exec node sim/$PLATFORM/entry.mjs"]

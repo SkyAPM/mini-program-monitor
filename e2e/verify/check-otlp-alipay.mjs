@@ -1,5 +1,7 @@
 import { execSync } from 'node:child_process';
 
+const SERVICE = process.env.SERVICE ?? 'mini-program-sim-alipay';
+
 let logs;
 try {
   logs = execSync('docker logs otel-collector 2>&1', { encoding: 'utf-8', timeout: 10_000 });
@@ -18,9 +20,8 @@ assert(logs.includes('miniprogram.request.duration'), 'metric miniprogram.reques
 assert(logs.includes('DataType: Histogram'), 'request metric is a histogram');
 assert(logs.includes('SeverityText: ERROR'), 'log severity ERROR');
 assert(logs.includes('exception.type'), 'log has exception.type attribute');
-assert(logs.includes('Str(alipay-e2e)'), 'resource service.name = alipay-e2e');
+assert(logs.includes(`Str(${SERVICE})`), `resource service.name = ${SERVICE}`);
 assert(logs.includes('Str(alipay)'), 'resource platform = alipay');
-assert(logs.includes('alipay test error'), 'alipay error log body');
 
 if (!ok) { console.error('\n--- otel-collector logs ---\n', logs); process.exit(1); }
 console.log('[verify] all Alipay OTLP checks passed');

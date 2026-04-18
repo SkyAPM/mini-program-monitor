@@ -1,0 +1,12 @@
+{
+  "name": "baseline",
+  "pages": ["pages/index/index", "pages/detail/index"],
+  "navigate": { "everyMs": 10000 },
+  "requests": { "everyMs": 2500 },
+  "errors": {
+    "js":     { "everyMs": 120000 },
+    "manual": { "everyMs": 180000 }
+  },
+  "perf": { "onNavigate": true, "appLaunch": [800, 1400], "firstRender": [180, 450] },
+  "lifecycle": { "hideShowEveryMs": 120000 }
+}
