@@ -39,7 +39,7 @@ Emitted by the **perf collector**. On WeChat via `wx.getPerformance()` + `Perfor
 |---|---|---|---|
 | `miniprogram.app_launch.duration` | ms | PerformanceEntry `navigation/appLaunch` duration (WeChat); `onLaunch→onShow` or install-time→first `onReady` (Alipay) | both |
 | `miniprogram.first_render.duration` | ms | PerformanceEntry `render/firstRender` duration (WeChat); page `onLoad→onReady` (Alipay) | both |
-| `miniprogram.first_paint.time` | ms | PerformanceEntry `render/firstPaint` `startTime` | WeChat only |
+| `miniprogram.first_paint.time` | ms (**timestamp**, not duration) | PerformanceEntry `render/firstPaint` `startTime` — wall-clock epoch-ms of when first paint fired | WeChat only |
 | `miniprogram.route.duration` | ms | PerformanceEntry `navigation/route` duration | WeChat only |
 | `miniprogram.script.duration` | ms | PerformanceEntry `script` duration | WeChat only |
 | `miniprogram.package_load.duration` | ms | PerformanceEntry `loadPackage` duration | WeChat only |

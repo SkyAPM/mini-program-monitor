@@ -30,3 +30,4 @@ project.private.config.json
 
 # example/ local lockfile (dep is file:.. so the lock doesn't travel)
 /example/package-lock.json
+.captures/

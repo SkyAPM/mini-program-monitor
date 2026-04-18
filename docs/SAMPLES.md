@@ -54,7 +54,25 @@ POST `/v1/metrics`:
 }
 ```
 
-The other gauges (`first_render.duration`, `first_paint.time`, `route.duration`, `script.duration`, `package_load.duration`) have the same shape with different `name` values.
+The other duration gauges (`first_render.duration`, `route.duration`, `script.duration`, `package_load.duration`) have the same shape with different `name` values.
+
+`miniprogram.first_paint.time` has the same shape but carries a wall-clock epoch-millisecond **timestamp** rather than a duration (it's `entry.startTime` from the platform's `PerformanceObserver`), so `asInt` looks like this:
+
+```json
+{
+  "name": "miniprogram.first_paint.time",
+  "unit": "ms",
+  "gauge": {
+    "dataPoints": [{
+      "asInt": "1776513486256",
+      "timeUnixNano": "1776513486256000000",
+      "attributes": [
+        { "key": "miniprogram.page.path", "value": { "stringValue": "pages/index/index" } }
+      ]
+    }]
+  }
+}
+```
 
 ### Request histogram (`miniprogram.request.duration`)
 
@@ -115,6 +133,8 @@ POST `/v1/logs`:
 
 ### JS error (`exception.type = js`)
 
+`body` is the error message with any leading `MiniProgramError` / `Error:` prefix stripped. `exception.stacktrace` is the raw platform stack (the frames carry the WeChat runtime's `WASubContext.js` / `WAServiceMainContext.js` entries, which is useful for filtering framework noise out at the backend).
+
 ```json
 {
   "resourceLogs": [{
@@ -125,10 +145,10 @@ POST `/v1/logs`:
         "timeUnixNano": "1776455400000000000",
         "severityNumber": 17,
         "severityText": "ERROR",
-        "body": { "stringValue": "TypeError: Cannot read properties of undefined (reading 'foo')" },
+        "body": { "stringValue": "demo: synchronous throw from button tap" },
         "attributes": [
           { "key": "exception.type", "value": { "stringValue": "js" } },
-          { "key": "exception.stacktrace", "value": { "stringValue": "    at pages/index/index.js:42:18\n    at ..." } },
+          { "key": "exception.stacktrace", "value": { "stringValue": "Error: demo: synchronous throw from button tap\n    at pi.onThrowError (pages/index/index.js:10:11)\n    at Object.o.safeCallback (WASubContext.js:1:213529)\n    at Fn (WASubContext.js:1:353882)\n    at WAServiceMainContext.js:1:1058177" } },
           { "key": "miniprogram.page.path", "value": { "stringValue": "pages/index/index" } }
         ]
       }]
@@ -191,7 +211,7 @@ POST `/v3/segments` as a JSON array. One object per sampled request:
     "parentSpanId": -1,
     "spanLayer": "Http",
     "spanType": "Exit",
-    "componentId": 2,
+    "componentId": 10001,
     "peer": "api.example.com",
     "isError": false,
     "tags": [
