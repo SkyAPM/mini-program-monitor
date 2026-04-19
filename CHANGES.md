@@ -2,6 +2,16 @@
 
 Per-version release notes for `mini-program-monitor`. Newest at the top.
 
+## v0.4.0 (unreleased)
+
+### Changed
+
+- **`serviceInstance` is no longer auto-generated.** Prior versions populated `service.instance.id` (OTLP) and segment `serviceInstance` (SkyWalking) with a per-session device id of the form `mp-{random}`. At mini-program scale this created one OAP instance entity per session, which swamped instance-level aggregation. The auto-generator is removed; `serviceInstance` now defaults to unset.
+  - **OTLP wire behavior:** when `serviceInstance` is unset, the `service.instance.id` resource attribute is **omitted entirely** (spec-allowed — it's RECOMMENDED, not REQUIRED). OAP aggregates at the service level.
+  - **SkyWalking segment wire behavior:** `serviceInstance` is a protocol-mandatory field, so the segment builder substitutes the literal `-` when unset. Same substitution applies inside the `sw8` header so downstream trace-join stays valid.
+  - **Migration:** operators who need per-instance dimensionality (e.g. one instance per user-id bucket, one instance per released version) should pass `init({ serviceInstance: '…' })` explicitly. Dashboards that previously filtered on `mp-*` instances will now see the signal aggregated at the service level.
+- **`server.address` / segment `peer` sentinel changed from `unknown` to omitted / `-`.** When the request URL has no parseable `https?://host` prefix, OTLP now **omits** the `server.address` attribute on the request histogram and ajax error log, and SkyWalking segments substitute `-` for `peer` (again because the SW protocol requires a non-empty value). Dashboard queries that filtered or grouped on `server.address == "unknown"` need to union the old sentinel with the new behavior for any data that spans the v0.3 → v0.4 boundary.
+
 ## v0.3.0
 
 ### Added

@@ -68,7 +68,7 @@ init({
 
   // Optional
   serviceVersion: 'v1.2.0',         // default 'v0.0.0'
-  serviceInstance: 'instance-uuid',  // default auto-generated
+  serviceInstance: 'instance-uuid',  // default unset — OTLP omits `service.instance.id`; SkyWalking segments send `-`
   platform: 'wechat',               // 'wechat' | 'alipay', auto-detected if omitted
 
   // Feature flags

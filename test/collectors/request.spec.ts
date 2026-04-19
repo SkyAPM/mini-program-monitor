@@ -184,6 +184,22 @@ describe('request collector', () => {
     expect(metric).toBeDefined();
   });
 
+  it('omits server.address on histogram when URL has no parseable host', () => {
+    const { q, handle } = setup();
+    callWxRequest('not-a-url', 'GET', 200);
+    handle.drainHistogram();
+    const metric = q.drain().find((e) => e.kind === 'metric')!.payload as OtlpMetric[];
+    const attrs = metric[0].histogram!.dataPoints[0].attributes!;
+    expect(attrs.find((a) => a.key === 'server.address')).toBeUndefined();
+  });
+
+  it('omits server.address on ajax error log when URL has no parseable host', () => {
+    const { q } = setup();
+    callWxRequest('not-a-url', 'POST', 500);
+    const log = q.drain().find((e) => e.kind === 'log')!.payload as OtlpLogRecord;
+    expect(log.attributes!.find((a) => a.key === 'server.address')).toBeUndefined();
+  });
+
   it('emits error log when download fails with 4xx', () => {
     const downloadMock = vi.fn();
     const wx = (globalThis as unknown as { wx: { downloadFile: unknown } }).wx;

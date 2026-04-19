@@ -33,9 +33,7 @@ export function parseEnv(platform) {
     traceCollectorUrl: process.env.TRACE_COLLECTOR_URL ?? 'http://127.0.0.1:12801',
     service: process.env.SERVICE ?? `mini-program-sim-${platform}`,
     serviceVersion: process.env.SERVICE_VERSION ?? 'sim',
-    serviceInstance:
-      process.env.SERVICE_INSTANCE ??
-      `sim-${Math.random().toString(36).slice(2, 8)}`,
+    serviceInstance: process.env.SERVICE_INSTANCE,
     encoding,
     debug: bool(process.env.DEBUG, false),
   };

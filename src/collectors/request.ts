@@ -19,9 +19,9 @@ function toNanos(ms: number): string {
 function extractDomain(url: string): string {
   try {
     const match = url.match(/^https?:\/\/([^/?#]+)/);
-    return match ? match[1] : 'unknown';
+    return match ? match[1] : '';
   } catch {
-    return 'unknown';
+    return '';
   }
 }
 
@@ -49,9 +49,12 @@ function buildAttrs(
   const attrs: OtlpKeyValue[] = [
     { key: 'http.request.method', value: { stringValue: method } },
     { key: 'http.response.status_code', value: { stringValue: String(statusCode) } },
-    { key: 'server.address', value: { stringValue: extractDomain(url) } },
-    { key: 'miniprogram.page.path', value: { stringValue: currentPagePath() } },
   ];
+  const domain = extractDomain(url);
+  if (domain) {
+    attrs.push({ key: 'server.address', value: { stringValue: domain } });
+  }
+  attrs.push({ key: 'miniprogram.page.path', value: { stringValue: currentPagePath() } });
   const urlGroup = matchUrlGroup(url, urlGroupRules);
   if (urlGroup) {
     attrs.push({ key: 'url.path.group', value: { stringValue: urlGroup } });
@@ -65,18 +68,22 @@ function buildAjaxErrorLog(
   statusCode: number,
   errMsg: string,
 ): OtlpLogRecord {
+  const attributes: OtlpKeyValue[] = [
+    { key: 'exception.type', value: { stringValue: 'ajax' } },
+    { key: 'http.request.method', value: { stringValue: method } },
+    { key: 'http.response.status_code', value: { stringValue: String(statusCode) } },
+  ];
+  const domain = extractDomain(url);
+  if (domain) {
+    attributes.push({ key: 'server.address', value: { stringValue: domain } });
+  }
+  attributes.push({ key: 'miniprogram.page.path', value: { stringValue: currentPagePath() } });
   return {
     timeUnixNano: toNanos(Date.now()),
     severityNumber: 17,
     severityText: 'ERROR',
     body: { stringValue: `${method} ${url} failed: ${errMsg || statusCode}` },
-    attributes: [
-      { key: 'exception.type', value: { stringValue: 'ajax' } },
-      { key: 'http.request.method', value: { stringValue: method } },
-      { key: 'http.response.status_code', value: { stringValue: String(statusCode) } },
-      { key: 'server.address', value: { stringValue: extractDomain(url) } },
-      { key: 'miniprogram.page.path', value: { stringValue: currentPagePath() } },
-    ],
+    attributes,
   };
 }
 
@@ -136,7 +143,8 @@ export function installRequestCollector(
 
     const method = (methodOverride ?? opts.method ?? 'GET').toUpperCase();
     const startTime = Date.now();
-    const peer = extractDomain(opts.url);
+    const peer = extractDomain(opts.url) || '-';
+    const segInstance = options.serviceInstance || '-';
     const page = currentPagePath();
 
     let traceId: string | undefined;
@@ -147,7 +155,7 @@ export function installRequestCollector(
       segmentId = uuid();
       const sw8 = buildSw8Header(
         traceId, segmentId, 0,
-        options.service, options.serviceInstance, page, peer,
+        options.service, segInstance, page, peer,
       );
       opts = { ...opts, headers: { ...opts.headers, sw8 } };
     }
@@ -191,7 +199,7 @@ export function installRequestCollector(
               traceId,
               traceSegmentId: segmentId,
               service: options.service,
-              serviceInstance: options.serviceInstance,
+              serviceInstance: segInstance,
               spans: [span],
             };
             queue.push({ kind: 'segment', time: now(), payload: segment });
@@ -237,7 +245,7 @@ export function installRequestCollector(
               traceId,
               traceSegmentId: segmentId,
               service: options.service,
-              serviceInstance: options.serviceInstance,
+              serviceInstance: segInstance,
               spans: [span],
             };
             queue.push({ kind: 'segment', time: now(), payload: segment });

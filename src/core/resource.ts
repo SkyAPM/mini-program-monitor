@@ -9,11 +9,15 @@ export function buildResource(options: ResolvedOptions): OtlpResource {
   const attrs: OtlpKeyValue[] = [
     { key: 'service.name', value: { stringValue: options.service } },
     { key: 'service.version', value: { stringValue: options.serviceVersion } },
-    { key: 'service.instance.id', value: { stringValue: options.serviceInstance } },
+  ];
+  if (options.serviceInstance) {
+    attrs.push({ key: 'service.instance.id', value: { stringValue: options.serviceInstance } });
+  }
+  attrs.push(
     { key: 'telemetry.sdk.name', value: { stringValue: SDK_NAME } },
     { key: 'telemetry.sdk.version', value: { stringValue: SDK_VERSION } },
     { key: 'miniprogram.platform', value: { stringValue: options.platform } },
-  ];
+  );
   return { attributes: attrs };
 }
 

@@ -24,7 +24,7 @@ export function resolveOptions(opts: MonitorOptions): ResolvedOptions {
   return {
     service: opts.service,
     serviceVersion: opts.serviceVersion ?? 'v0.0.0',
-    serviceInstance: opts.serviceInstance ?? autoInstance(),
+    serviceInstance: opts.serviceInstance ?? '',
     collector: opts.collector ?? '',
     traceCollector: opts.traceCollector ?? opts.collector ?? '',
     platform: opts.platform ?? detectPlatformName() ?? 'wechat',
@@ -46,8 +46,4 @@ export function resolveOptions(opts: MonitorOptions): ResolvedOptions {
     encoding: opts.encoding ?? 'proto',
     debug: opts.debug ?? false,
   };
-}
-
-function autoInstance(): string {
-  return `mp-${Math.random().toString(36).slice(2, 10)}`;
 }

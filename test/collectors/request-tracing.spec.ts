@@ -4,6 +4,7 @@ import { installRequestCollector } from '../../src/collectors/request';
 import { resolveOptions } from '../../src/core/options';
 import { createWechatAdapter } from '../../src/adapters/wechat';
 import type { SegmentObject } from '../../src/types/segment';
+import { base64Encode } from '../../src/shared/base64';
 
 let originalRequestMock: ReturnType<typeof vi.fn>;
 
@@ -109,5 +110,44 @@ describe('request collector — tracing', () => {
     const parts = (call.header.sw8 as string).split('-');
     expect(parts).toHaveLength(8);
     expect(parts[0]).toBe('1');
+  });
+
+  function setupWithoutInstance(): RingQueue {
+    const q = new RingQueue(20);
+    const opts = resolveOptions({
+      service: 'trace-svc',
+      collector: 'http://oap:4318',
+      enable: { tracing: true },
+    });
+    const adapter = createWechatAdapter();
+    installRequestCollector(adapter, q, opts);
+    return q;
+  }
+
+  it('segment serviceInstance is "-" when operator does not supply one', () => {
+    const q = setupWithoutInstance();
+    callWxRequest('https://api.example.com/users', 'GET', 200);
+    const seg = q.drain().find((e) => e.kind === 'segment')!.payload as SegmentObject;
+    expect(seg.serviceInstance).toBe('-');
+  });
+
+  it('segment peer and sw8 peer field are "-" when URL has no parseable host', () => {
+    const q = setupWithoutInstance();
+    callWxRequest('relative/path', 'GET', 200);
+    const seg = q.drain().find((e) => e.kind === 'segment')!.payload as SegmentObject;
+    expect(seg.spans[0].peer).toBe('-');
+
+    const call = originalRequestMock.mock.calls[originalRequestMock.mock.calls.length - 1][0];
+    const parts = (call.header.sw8 as string).split('-');
+    expect(parts).toHaveLength(8);
+  });
+
+  it('sw8 header substitutes "-" for absent instance so downstream join stays valid', () => {
+    setupWithoutInstance();
+    callWxRequest('https://api.example.com/x', 'GET', 200);
+    const call = originalRequestMock.mock.calls[originalRequestMock.mock.calls.length - 1][0];
+    const parts = (call.header.sw8 as string).split('-');
+    expect(parts).toHaveLength(8);
+    expect(parts[5]).toBe(base64Encode('-'));
   });
 });

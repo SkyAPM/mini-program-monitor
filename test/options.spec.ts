@@ -12,12 +12,17 @@ describe('resolveOptions', () => {
     expect(o.maxQueue).toBe(200);
     expect(o.flushInterval).toBe(5000);
     expect(o.debug).toBe(false);
-    expect(o.serviceInstance).toMatch(/^mp-/);
+    expect(o.serviceInstance).toBe('');
     expect(o.encoding).toBe('proto');
     expect(o.enable.error).toBe(true);
     expect(o.enable.perf).toBe(true);
     expect(o.enable.request).toBe(true);
     expect(o.enable.tracing).toBe(false);
+  });
+
+  it('passes operator-supplied serviceInstance through unchanged', () => {
+    const o = resolveOptions({ service: 'svc', serviceInstance: 'operator-supplied-id' });
+    expect(o.serviceInstance).toBe('operator-supplied-id');
   });
 
   it('auto-detects platform from wx global (setup.ts supplies wx)', () => {

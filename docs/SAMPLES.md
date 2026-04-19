@@ -2,7 +2,7 @@
 
 Concrete OTLP (JSON-mapped) and SkyWalking-native payloads that the SDK posts. Shown as JSON — in proto mode the exact same structure goes on the wire as protobuf-encoded bytes. For semantics, see [SIGNALS.md](./SIGNALS.md).
 
-All examples assume `init({ service: 'my-mini-program', serviceVersion: 'v1.2.0', collector: 'https://oap.example.com', platform: 'wechat' })` and a page path of `pages/index/index`.
+All examples assume `init({ service: 'my-mini-program', serviceVersion: 'v1.2.0', serviceInstance: 'instance-uuid', collector: 'https://oap.example.com', platform: 'wechat' })` and a page path of `pages/index/index`. If `serviceInstance` is unset, OTLP resource blocks omit the `service.instance.id` attribute and SkyWalking segments send `serviceInstance: "-"`.
 
 ## Shared resource block
 
@@ -14,7 +14,7 @@ Every OTLP payload (logs + metrics) uses this resource and scope. It's shown onc
     "attributes": [
       { "key": "service.name", "value": { "stringValue": "my-mini-program" } },
       { "key": "service.version", "value": { "stringValue": "v1.2.0" } },
-      { "key": "service.instance.id", "value": { "stringValue": "mp-ax91z2pf" } },
+      { "key": "service.instance.id", "value": { "stringValue": "instance-uuid" } },
       { "key": "telemetry.sdk.name", "value": { "stringValue": "mini-program-monitor" } },
       { "key": "telemetry.sdk.version", "value": { "stringValue": "<current SDK version>" } },
       { "key": "miniprogram.platform", "value": { "stringValue": "wechat" } }
@@ -204,7 +204,7 @@ POST `/v3/segments` as a JSON array. One object per sampled request:
   "traceId": "0e9f6d8a-2b4a-4f3e-9c1d-7a3b2c1d4e5f",
   "traceSegmentId": "5a7d8e9f-1234-4abc-9def-abcdef012345",
   "service": "my-mini-program",
-  "serviceInstance": "mp-ax91z2pf",
+  "serviceInstance": "instance-uuid",
   "spans": [{
     "operationName": "pages/checkout/index",
     "startTime": 1776455400123,

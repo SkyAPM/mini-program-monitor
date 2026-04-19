@@ -20,7 +20,7 @@ Every OTLP payload (logs + metrics) carries the same resource attributes, built 
 |---|---|---|
 | `service.name` | `my-mini-program` | `init.service` |
 | `service.version` | `v1.2.0` | `init.serviceVersion` (default `v0.0.0`) |
-| `service.instance.id` | `mp-ax91z2pf` | `init.serviceInstance` (auto-generated if unset) |
+| `service.instance.id` | `instance-uuid` | `init.serviceInstance`; **attribute omitted entirely when unset** (per-device auto-generation was dropped in v0.4.0 because device-cardinality swamps OAP instance aggregation) |
 | `telemetry.sdk.name` | `mini-program-monitor` | hardcoded |
 | `telemetry.sdk.version` | `<current SDK version>` | SDK build-time constant from `package.json#version` |
 | `miniprogram.platform` | `wechat` or `alipay` | auto-detected, or `init.platform` override |
@@ -62,7 +62,7 @@ Attributes per data point:
 |---|---|
 | `http.request.method` | `GET`, `POST`, `DOWNLOAD`, `UPLOAD` |
 | `http.response.status_code` | `200`, `404`, `0` (fail/timeout) |
-| `server.address` | `api.example.com` |
+| `server.address` | `api.example.com` (attribute omitted when the URL has no parseable `https?://host` prefix) |
 | `miniprogram.page.path` | `pages/index/index` |
 | `url.path.group` | optional; only present when a rule in `init.request.urlGroupRules` matches the URL |
 
@@ -104,12 +104,12 @@ Segment shape (SkyWalking native):
 | `traceId` | SkyWalking UUID |
 | `traceSegmentId` | SkyWalking UUID |
 | `service` | from `init.service` |
-| `serviceInstance` | from `init.serviceInstance` |
+| `serviceInstance` | from `init.serviceInstance`; substituted with `-` when unset (SkyWalking's segment protocol requires a non-empty value) |
 | `spans[0].operationName` | current page path |
 | `spans[0].spanLayer` | `Http` |
 | `spans[0].spanType` | `Exit` |
 | `spans[0].componentId` | `10002` on WeChat, `10003` on Alipay (per-platform SkyWalking component IDs; OAP's `component-libraries.yml` registration tracks these values) |
-| `spans[0].peer` | `server.address` (URL host) |
+| `spans[0].peer` | `server.address` (URL host), or `-` when the URL has no parseable host |
 | `spans[0].isError` | `true` if statusCode ≥ 400, statusCode = 0, or request failed |
 | `spans[0].tags` | `http.method`, `url`, `miniprogram.platform`, and `http.status_code` (success) or `error.message` (fail) |
 

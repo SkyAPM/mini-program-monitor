@@ -33,7 +33,7 @@ OTLP logs + metrics go to `COLLECTOR_URL`. SkyWalking trace segments go to `TRAC
 | `TRACE_COLLECTOR_URL` | `http://127.0.0.1:12801` | SkyWalking `/v3/segments` endpoint. |
 | `SERVICE` | `mini-program-sim-<platform>` | `service.name` resource attribute. |
 | `SERVICE_VERSION` | `sim` | `service.version`. |
-| `SERVICE_INSTANCE` | random `sim-xxxx` | `service.instance.id`. |
+| `SERVICE_INSTANCE` | unset | `service.instance.id`. When unset, OTLP omits the attribute and SkyWalking segments substitute `-` — this is the default code path the SDK ships. Set explicitly (e.g. `SERVICE_INSTANCE=sim-abc123`) to exercise the operator-supplied path. |
 | `DEBUG` | `false` | Verbose SDK logging to stdout. |
 
 `SIGTERM` / `SIGINT` trigger a clean flush + shutdown.
