@@ -20,7 +20,7 @@ Every OTLP payload (logs + metrics) carries the same resource attributes, built 
 |---|---|---|
 | `service.name` | `my-mini-program` | `init.service` |
 | `service.version` | `v1.2.0` | `init.serviceVersion` (default `v0.0.0`) |
-| `service.instance.id` | `instance-uuid` | `init.serviceInstance`; **attribute omitted entirely when unset** (per-device auto-generation was dropped in v0.4.0 because device-cardinality swamps OAP instance aggregation) |
+| `service.instance.id` | `v1.2.0` | `init.serviceInstance`; **attribute omitted entirely when unset** (per-device auto-generation was dropped in v0.4.0 because device-cardinality swamps OAP instance aggregation). **Recommended value**: a version-scoped identifier — e.g. the same string as `service.version`, or a release tag. Do not set this to a per-device id. |
 | `telemetry.sdk.name` | `mini-program-monitor` | hardcoded |
 | `telemetry.sdk.version` | `<current SDK version>` | SDK build-time constant from `package.json#version` |
 | `miniprogram.platform` | `wechat` or `alipay` | auto-detected, or `init.platform` override |

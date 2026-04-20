@@ -68,7 +68,9 @@ init({
 
   // Optional
   serviceVersion: 'v1.2.0',         // default 'v0.0.0'
-  serviceInstance: 'instance-uuid',  // default unset — OTLP omits `service.instance.id`; SkyWalking segments send `-`
+  serviceInstance: 'v1.2.0',        // recommended: a version-scoped identifier (e.g. same as serviceVersion).
+                                     // NOT a per-device id — per-device cardinality swamps OAP instance aggregation.
+                                     // Default unset — OTLP omits `service.instance.id`; SkyWalking segments send `-`.
   platform: 'wechat',               // 'wechat' | 'alipay', auto-detected if omitted
 
   // Feature flags

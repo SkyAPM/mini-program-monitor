@@ -55,6 +55,8 @@ jobs:
             -e ENCODING=${{ matrix.encoding }} \
             -e COLLECTOR_URL=http://127.0.0.1:4318 \
             -e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+            -e SERVICE_VERSION=sim \
+            -e SERVICE_INSTANCE=sim \
             -e DEBUG=true \
             mini-program-monitor-sim-${{ matrix.platform }}:ci
 
@@ -121,12 +123,14 @@ jobs:
             -e SCENARIO=baseline -e ENCODING=proto \
             -e COLLECTOR_URL=http://127.0.0.1:4318 \
             -e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+            -e SERVICE_VERSION=sim -e SERVICE_INSTANCE=sim \
             mini-program-monitor-sim-wechat:ci &
           docker run --rm --network host \
             -e MODE=timed -e DURATION_MS=20000 \
             -e SCENARIO=baseline -e ENCODING=proto \
             -e COLLECTOR_URL=http://127.0.0.1:4318 \
             -e TRACE_COLLECTOR_URL=http://127.0.0.1:12801 \
+            -e SERVICE_VERSION=sim -e SERVICE_INSTANCE=sim \
             mini-program-monitor-sim-alipay:ci &
           wait
 
