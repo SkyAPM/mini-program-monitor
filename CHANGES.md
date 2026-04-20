@@ -2,7 +2,7 @@
 
 Per-version release notes for `mini-program-monitor`. Newest at the top.
 
-## v0.4.0 (unreleased)
+## v0.4.0
 
 ### Changed
 
