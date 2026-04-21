@@ -2,6 +2,13 @@
 
 Per-version release notes for `mini-program-monitor`. Newest at the top.
 
+## v0.4.1
+
+Sim-only follow-up to v0.4.0. No SDK code change — the npm tarball is functionally identical to v0.4.0 apart from the `version` field.
+
+- **WeChat sim now emits the full six-gauge perf surface.** `firePerf()` previously only fired `appLaunch`, `firstRender`, and `firstPaint` entries, so the three WeChat-only gauges (`miniprogram.route.duration`, `miniprogram.script.duration`, `miniprogram.package_load.duration`) never surfaced in the 12-cell e2e matrix or in the `make preview` dashboards — even though the SDK's perf collector observed all four entry types on a real device. Adding the three missing entry types (`navigation/route`, `script`, `loadPackage`) closes the gap, and scenario profiles (`baseline`, `demo`, `slow-api`, `error-storm`) gain matching knobs (`route`, `script`, `packageLoad`) so the new gauges diverge across scenarios the same way `appLaunch` and `firstRender` already did. Alipay sim is unchanged — those entry types don't exist in Alipay's runtime, so the lifecycle fallback stays two-gauge by platform necessity.
+- **GHCR sim images pinned to `v0.4.1`.** `ghcr.io/skyapm/mini-program-monitor/sim-{wechat,alipay}:v0.4.1` is the stable tag to pin to for third-party integration testing with the full WeChat perf surface.
+
 ## v0.4.0
 
 ### Changed
