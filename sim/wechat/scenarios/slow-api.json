@@ -14,6 +14,6 @@
     "promise": { "everyMs": 20000 },
     "manual":  { "everyMs": 60000 }
   },
-  "perf": { "onNavigate": true, "appLaunch": [1500, 3500], "firstRender": [600, 1500] },
+  "perf": { "onNavigate": true, "appLaunch": [1500, 3500], "firstRender": [600, 1500], "route": [100, 400], "script": [50, 300], "packageLoad": [150, 600] },
   "lifecycle": { "hideShowEveryMs": 120000 }
 }

@@ -7,6 +7,6 @@
     "js":     { "everyMs": 120000 },
     "manual": { "everyMs": 180000 }
   },
-  "perf": { "onNavigate": true, "appLaunch": [800, 1400], "firstRender": [180, 450] },
+  "perf": { "onNavigate": true, "appLaunch": [800, 1400], "firstRender": [180, 450], "route": [30, 180], "script": [20, 120], "packageLoad": [60, 250] },
   "lifecycle": { "hideShowEveryMs": 120000 }
 }

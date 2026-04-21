@@ -75,9 +75,12 @@ export function createTriggers({ platform, platformApi, fixtures, scenario, sdk 
       if (!perf) return;
       if (platform === 'wechat' && platformApi.firePerfEntries) {
         platformApi.firePerfEntries([
-          { name: 'appLaunch',   entryType: 'navigation', startTime: 0, duration: randRange(perf.appLaunch   ?? [800, 1800]), path: pagePath },
-          { name: 'firstRender', entryType: 'render',     startTime: 0, duration: randRange(perf.firstRender ?? [200, 600]),  path: pagePath },
-          { name: 'firstPaint',  entryType: 'render',     startTime: 0, duration: 0, path: pagePath },
+          { name: 'appLaunch',   entryType: 'navigation',  startTime: 0,          duration: randRange(perf.appLaunch   ?? [800, 1800]), path: pagePath },
+          { name: 'route',       entryType: 'navigation',  startTime: 0,          duration: randRange(perf.route       ?? [30, 200]),   path: pagePath },
+          { name: 'firstRender', entryType: 'render',      startTime: 0,          duration: randRange(perf.firstRender ?? [200, 600]),  path: pagePath },
+          { name: 'firstPaint',  entryType: 'render',      startTime: 0,          duration: 0,                                           path: pagePath },
+          { name: 'script',      entryType: 'script',      startTime: 0,          duration: randRange(perf.script      ?? [20, 150]),   path: pagePath },
+          { name: 'loadPackage', entryType: 'loadPackage', startTime: 0,          duration: randRange(perf.packageLoad ?? [50, 300]),   path: pagePath },
         ]);
       } else if (platform === 'alipay' && platformApi.fireLifecycleForPerf) {
         platformApi.fireLifecycleForPerf({

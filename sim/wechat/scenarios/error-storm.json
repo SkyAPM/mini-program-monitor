@@ -16,6 +16,6 @@
     "pageNotFound": { "everyMs": 30000, "paths": ["pages/legacy/index"] },
     "manual":       { "everyMs": 15000 }
   },
-  "perf": { "onNavigate": true, "appLaunch": [800, 1800], "firstRender": [200, 600] },
+  "perf": { "onNavigate": true, "appLaunch": [800, 1800], "firstRender": [200, 600], "route": [30, 200], "script": [20, 150], "packageLoad": [50, 300] },
   "lifecycle": { "hideShowEveryMs": 60000 }
 }
