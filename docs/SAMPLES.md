@@ -17,7 +17,8 @@ Every OTLP payload (logs + metrics) uses this resource and scope. It's shown onc
       { "key": "service.instance.id", "value": { "stringValue": "v1.2.0" } },
       { "key": "telemetry.sdk.name", "value": { "stringValue": "mini-program-monitor" } },
       { "key": "telemetry.sdk.version", "value": { "stringValue": "<current SDK version>" } },
-      { "key": "miniprogram.platform", "value": { "stringValue": "wechat" } }
+      { "key": "miniprogram.platform", "value": { "stringValue": "wechat" } },
+      { "key": "service.layer", "value": { "stringValue": "WECHAT_MINI_PROGRAM" } }
     ]
   },
   "scope": { "name": "mini-program-monitor", "version": "<current SDK version>" }

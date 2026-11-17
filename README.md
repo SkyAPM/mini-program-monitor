@@ -123,6 +123,7 @@ OTLP resource attributes identify the service:
 | `service.name` | `my-mini-program` |
 | `service.version` | `v1.2.0` |
 | `miniprogram.platform` | `wechat` or `alipay` |
+| `service.layer` | `WECHAT_MINI_PROGRAM` or `ALIPAY_MINI_PROGRAM` |
 | `telemetry.sdk.name` | `mini-program-monitor` |
 
 ## Compatibility

@@ -2,6 +2,7 @@ import type { OtlpResource, OtlpKeyValue, OtlpInstrumentationScope } from '../ty
 import type { ResolvedOptions } from './options';
 
 const SDK_NAME = 'mini-program-monitor';
+const SERVICE_LAYER = { wechat: 'WECHAT_MINI_PROGRAM', alipay: 'ALIPAY_MINI_PROGRAM' } as const;
 declare const __SDK_VERSION__: string;
 const SDK_VERSION = typeof __SDK_VERSION__ !== 'undefined' ? __SDK_VERSION__ : '0.0.0';
 
@@ -17,6 +18,8 @@ export function buildResource(options: ResolvedOptions): OtlpResource {
     { key: 'telemetry.sdk.name', value: { stringValue: SDK_NAME } },
     { key: 'telemetry.sdk.version', value: { stringValue: SDK_VERSION } },
     { key: 'miniprogram.platform', value: { stringValue: options.platform } },
+    // OAP routes OTLP logs to the LAL rules of the layer named here.
+    { key: 'service.layer', value: { stringValue: SERVICE_LAYER[options.platform] } },
   );
   return { attributes: attrs };
 }

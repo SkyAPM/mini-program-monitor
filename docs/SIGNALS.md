@@ -24,6 +24,7 @@ Every OTLP payload (logs + metrics) carries the same resource attributes, built 
 | `telemetry.sdk.name` | `mini-program-monitor` | hardcoded |
 | `telemetry.sdk.version` | `<current SDK version>` | SDK build-time constant from `package.json#version` |
 | `miniprogram.platform` | `wechat` or `alipay` | auto-detected, or `init.platform` override |
+| `service.layer` | `WECHAT_MINI_PROGRAM` or `ALIPAY_MINI_PROGRAM` | derived from `miniprogram.platform`; SkyWalking OAP routes the OTLP logs to the LAL rules of this layer |
 
 Instrumentation scope is `{ name: "mini-program-monitor", version: <SDK version> }` on every OTLP batch.
 

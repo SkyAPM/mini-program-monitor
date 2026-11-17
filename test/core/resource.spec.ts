@@ -13,6 +13,14 @@ describe('buildResource', () => {
     expect(keys).toContain('telemetry.sdk.name');
   });
 
+  it('emits the SkyWalking layer of the platform as service.layer', () => {
+    const layerOf = (platform: 'wechat' | 'alipay') =>
+      buildResource(resolveOptions({ service: 'svc', platform })).attributes
+        .find((a) => a.key === 'service.layer')?.value.stringValue;
+    expect(layerOf('wechat')).toBe('WECHAT_MINI_PROGRAM');
+    expect(layerOf('alipay')).toBe('ALIPAY_MINI_PROGRAM');
+  });
+
   it('emits service.instance.id when operator supplies one', () => {
     const res = buildResource(resolveOptions({ service: 'svc', serviceInstance: 'inst-42' }));
     const inst = res.attributes.find((a) => a.key === 'service.instance.id');
