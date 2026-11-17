@@ -2,6 +2,13 @@
 
 Per-version release notes for `mini-program-monitor`. Newest at the top.
 
+## v0.5.0 (unreleased)
+
+### Changed
+
+- **`service.layer` resource attribute on OTLP logs and metrics.** Every OTLP payload now carries `service.layer: WECHAT_MINI_PROGRAM | ALIPAY_MINI_PROGRAM`, derived from `miniprogram.platform`. SkyWalking OAP routes an OTLP log to the LAL rules declared for its `service.layer`, so the error logs reach the mini-program layer's rules directly instead of OAP inferring the layer from `miniprogram.platform` in a `layer: auto` rule. On the metrics side the attribute is one more resource label, which the mini-program MAL rules don't use.
+  - **OAP compatibility:** the OAP must declare LAL rules for the `WECHAT_MINI_PROGRAM` and `ALIPAY_MINI_PROGRAM` layers. An OAP whose only mini-program LAL rule is the `layer: auto` one doesn't run it for a log that carries a layer, so the error logs and the error-count metrics derived from them are dropped. Upgrade OAP first.
+
 ## v0.4.1
 
 Sim-only follow-up to v0.4.0. No SDK code change — the npm tarball is functionally identical to v0.4.0 apart from the `version` field.
